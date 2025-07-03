@@ -140,6 +140,56 @@ async function showManagerProfiles() {
 
   document.getElementById('manager-profiles').innerHTML = html;
 }
+async function buildTeamPages() {
+  const usersRes = await fetch(`https://api.sleeper.app/v1/league/${leagueId}/users`);
+  const rostersRes = await fetch(`https://api.sleeper.app/v1/league/${leagueId}/rosters`);
+  const users = await usersRes.json();
+  const rosters = await rostersRes.json();
+  const userMap = Object.fromEntries(users.map(u => [u.user_id, u.display_name]));
+
+  const container = document.createElement('section');
+  container.innerHTML = '<h2>Team Pages</h2>';
+
+  rosters.forEach((r, i) => {
+    const name = userMap[r.owner_id] || 'Unknown';
+    const page = document.createElement('div');
+    page.classList.add('roster');
+    page.innerHTML = `
+      <h3>${name}</h3>
+      <p><strong>Wins:</strong> ${r.settings.wins}, Losses: ${r.settings.losses}</p>
+      <p><strong>Points For:</strong> ${r.settings.fpts}, Points Against: ${r.settings.fpts_against}</p>
+      <p><em>Additional history/stats can go here!</em></p>
+    `;
+    container.appendChild(page);
+  });
+
+  document.body.appendChild(container);
+}
+
+async function showPowerRankings() {
+  const rostersRes = await fetch(`https://api.sleeper.app/v1/league/${leagueId}/rosters`);
+  const usersRes = await fetch(`https://api.sleeper.app/v1/league/${leagueId}/users`);
+  const users = await usersRes.json();
+  const userMap = Object.fromEntries(users.map(u => [u.user_id, u.display_name]));
+
+  const rosters = await rostersRes.json();
+  const rankings = rosters.map(r => ({
+    name: userMap[r.owner_id] || 'Unknown',
+    score: r.settings.fpts + (r.settings.wins * 20)
+  }));
+
+  rankings.sort((a, b) => b.score - a.score);
+
+  const html = rankings.map((r, i) => `
+    <p><strong>#${i + 1} ${r.name}</strong> — Power Score: ${r.score}</p>
+  `).join('');
+
+  document.getElementById('power-rankings-data').innerHTML = html;
+}
+
+// Load these too
+buildTeamPages();
+showPowerRankings();
 
 // INIT
 populateWeekSelector();
