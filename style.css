@@ -97,3 +97,17 @@ body.dark table, body.dark th, body.dark td {
   margin-bottom: 0.5em;
   font-size: 1.1em;
 }
+#trendChart {
+  background: #fff;
+  padding: 1em;
+  border-radius: 10px;
+  max-width: 100%;
+}
+
+#commish-notes textarea {
+  width: 100%;
+  max-width: 600px;
+  padding: 0.5em;
+  border: 1px solid #ccc;
+  font-size: 1em;
+}
