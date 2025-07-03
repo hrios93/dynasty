@@ -73,6 +73,79 @@ function loadDraftBoard() {
 function loadTradeTracker() {
   document.getElementById('trade-data').innerHTML = "<p>Coming soon: trade tracker!</p>";
 }
+async function fetchMatchups() {
+  const week = document.getElementById('week-select').value;
+  const res = await fetch(`https://api.sleeper.app/v1/league/${leagueId}/matchups/${week}`);
+  const matchups = await res.json();
+
+  const usersRes = await fetch(`https://api.sleeper.app/v1/league/${leagueId}/users`);
+  const users = await usersRes.json();
+  const userMap = Object.fromEntries(users.map(u => [u.user_id, u.display_name]));
+
+  let html = "";
+  matchups.forEach(m => {
+    const name = userMap[m.owner_id] || 'Unknown';
+    html += `<p><strong>${name}</strong>: ${m.points} points</p>`;
+  });
+
+  document.getElementById('matchups-data').innerHTML = html;
+}
+
+async function populateWeekSelector() {
+  const weeks = Array.from({ length: 18 }, (_, i) => i + 1);
+  const select = document.getElementById('week-select');
+  select.innerHTML = weeks.map(w => `<option value="${w}">Week ${w}</option>`).join('');
+  select.value = new Date().getDay(); // Set a rough default
+  fetchMatchups();
+}
+
+async function fetchTrades() {
+  const res = await fetch(`https://api.sleeper.app/v1/league/${leagueId}/transactions/1`);
+  const trades = await res.json();
+  const filtered = trades.filter(t => t.type === 'trade');
+
+  const usersRes = await fetch(`https://api.sleeper.app/v1/league/${leagueId}/users`);
+  const users = await usersRes.json();
+  const userMap = Object.fromEntries(users.map(u => [u.user_id, u.display_name]));
+
+  const playerData = await fetch('https://api.sleeper.app/v1/players/nfl').then(r => r.json());
+
+  let html = "";
+  filtered.slice(0, 5).forEach(t => {
+    const teams = Object.values(t.adds || {}).reduce((acc, user) => {
+      acc[user] = acc[user] || [];
+      return acc;
+    }, {});
+    for (const user in teams) {
+      const players = Object.keys(t.adds).filter(pid => t.adds[pid] === user);
+      html += `<p><strong>${userMap[user]}</strong> received: ${players.map(p => playerData[p]?.full_name || p).join(", ")}</p>`;
+    }
+    html += "<hr>";
+  });
+
+  document.getElementById('trade-feed').innerHTML = html || "<p>No recent trades</p>";
+}
+
+async function showManagerProfiles() {
+  const usersRes = await fetch(`https://api.sleeper.app/v1/league/${leagueId}/users`);
+  const users = await usersRes.json();
+
+  let html = users.map(u => `
+    <div class="roster">
+      <h3>${u.display_name}</h3>
+      <p>User ID: ${u.user_id}</p>
+      ${u.metadata?.avatar ? `<img src="https://sleepercdn.com/avatars/thumbs/${u.avatar}" width="60">` : ''}
+    </div>
+  `).join('');
+
+  document.getElementById('manager-profiles').innerHTML = html;
+}
+
+// INIT
+populateWeekSelector();
+fetchTrades();
+showManagerProfiles();
+
 
 fetchLeagueInfo();
 fetchRosters();
