@@ -95,6 +95,29 @@
   <h2>Appearance</h2>
   <button onclick="toggleDarkMode()">Toggle Dark Mode</button>
 </section>
+<section id="schedule">
+  <h2>Weekly Matchup Schedule</h2>
+  <label for="schedule-week">Select Week:</label>
+  <select id="schedule-week" onchange="renderSchedule()"></select>
+  <div id="schedule-table">Loading...</div>
+</section>
+
+<section id="waiver-wire">
+  <h2>Recent Waiver Adds & Drops</h2>
+  <div id="waiver-feed">Loading...</div>
+</section>
+
+<section id="champions">
+  <h2>🏆 League Champions</h2>
+  <div id="champion-gallery">
+    <ul>
+      <li><strong>2023:</strong> Team Alpha</li>
+      <li><strong>2022:</strong> Team Bravo</li>
+      <li><strong>2021:</strong> Team Charlie</li>
+    </ul>
+    <p><em>Add more past champs manually here!</em></p>
+  </div>
+</section>
 
   </main>
 
