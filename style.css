@@ -63,3 +63,20 @@ footer {
   padding: 1em;
   border: 1px dashed #ccc;
 }
+/* Dark Mode Styles */
+body.dark {
+  background: #121212;
+  color: #f0f0f0;
+}
+body.dark header, body.dark footer {
+  background: #1e1e1e;
+  color: #f0f0f0;
+}
+body.dark .roster, body.dark article, body.dark #rules-text {
+  background: #1d1d1d;
+  border-color: #444;
+}
+body.dark table, body.dark th, body.dark td {
+  border-color: #444;
+  background: #1a1a1a;
+}
