@@ -320,6 +320,108 @@ async function fetchWaivers() {
 
   document.getElementById('waiver-feed').innerHTML = html || '<p>No recent activity</p>';
 }
+async function drawScoringChart() {
+  const [matchups, rosters, users] = await Promise.all([
+    Promise.all(Array.from({ length: 18 }, (_, w) => 
+      fetch(`https://api.sleeper.app/v1/league/${leagueId}/matchups/${w + 1}`).then(r => r.ok ? r.json() : [])
+    )),
+    fetch(`https://api.sleeper.app/v1/league/${leagueId}/rosters`).then(r => r.json()),
+    fetch(`https://api.sleeper.app/v1/league/${leagueId}/users`).then(r => r.json())
+  ]);
+
+  const userMap = Object.fromEntries(users.map(u => [u.user_id, u.display_name]));
+  const rosterMap = Object.fromEntries(rosters.map(r => [r.roster_id, r.owner_id]));
+
+  const weeklyPoints = {}; // { owner_id: [w1, w2, w3, ...] }
+
+  matchups.forEach((week, i) => {
+    week.forEach(m => {
+      const owner = rosterMap[m.roster_id];
+      if (!weeklyPoints[owner]) weeklyPoints[owner] = [];
+      weeklyPoints[owner][i] = m.points || 0;
+    });
+  });
+
+  const ctx = document.getElementById("trendChart").getContext("2d");
+  new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: Array.from({ length: 18 }, (_, i) => `W${i + 1}`),
+      datasets: Object.entries(weeklyPoints).map(([owner, points]) => ({
+        label: userMap[owner],
+        data: points,
+        fill: false,
+        borderColor: "#" + Math.floor(Math.random()*16777215).toString(16),
+        tension: 0.3
+      }))
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: true } }
+    }
+  });
+}
+function downloadCSV(filename, rows) {
+  const csv = rows.map(r => r.join(",")).join("\n");
+  const blob = new Blob([csv], { type: "text/csv" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = filename;
+  link.click();
+}
+
+async function downloadStandingsCSV() {
+  const res = await fetch(`https://api.sleeper.app/v1/league/${leagueId}/rosters`);
+  const rosters = await res.json();
+  const usersRes = await fetch(`https://api.sleeper.app/v1/league/${leagueId}/users`);
+  const users = await usersRes.json();
+  const userMap = Object.fromEntries(users.map(u => [u.user_id, u.display_name]));
+
+  const rows = [["Team", "Wins", "Losses", "FPTS", "FPTS Against"]];
+  rosters.forEach(r => {
+    rows.push([
+      userMap[r.owner_id] || r.owner_id,
+      r.settings.wins,
+      r.settings.losses,
+      r.settings.fpts,
+      r.settings.fpts_against
+    ]);
+  });
+  downloadCSV("standings.csv", rows);
+}
+
+async function downloadRostersCSV() {
+  const res = await fetch(`https://api.sleeper.app/v1/league/${leagueId}/rosters`);
+  const rosters = await res.json();
+  const usersRes = await fetch(`https://api.sleeper.app/v1/league/${leagueId}/users`);
+  const users = await usersRes.json();
+  const playersRes = await fetch(`https://api.sleeper.app/v1/players/nfl`);
+  const players = await playersRes.json();
+  const userMap = Object.fromEntries(users.map(u => [u.user_id, u.display_name]));
+
+  const rows = [["Team", "Player"]];
+  rosters.forEach(r => {
+    (r.players || []).forEach(pid => {
+      rows.push([
+        userMap[r.owner_id] || r.owner_id,
+        players[pid]?.full_name || pid
+      ]);
+    });
+  });
+  downloadCSV("rosters.csv", rows);
+}
+function saveNotes() {
+  const text = document.getElementById("commish-text").value;
+  localStorage.setItem("commish_notes", text);
+  document.getElementById("commish-display").innerText = text;
+  alert("Notes saved!");
+}
+
+function loadNotes() {
+  const notes = localStorage.getItem("commish_notes") || "";
+  document.getElementById("commish-text").value = notes;
+  document.getElementById("commish-display").innerText = notes;
+}
 
 
 // Load these too
@@ -334,6 +436,8 @@ showFuturePicks();
 populateTradeDropdowns();
 buildScheduleDropdown();
 fetchWaivers();
+drawScoringChart();
+loadNotes();
 
 
 fetchLeagueInfo();
