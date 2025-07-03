@@ -118,6 +118,24 @@
     <p><em>Add more past champs manually here!</em></p>
   </div>
 </section>
+<section id="scoring-trends">
+  <h2>Team Scoring Trends</h2>
+  <canvas id="trendChart" width="100%" height="60"></canvas>
+</section>
+
+<section id="export-tools">
+  <h2>📥 Export League Data</h2>
+  <button onclick="downloadStandingsCSV()">Download Standings CSV</button>
+  <button onclick="downloadRostersCSV()">Download Rosters CSV</button>
+</section>
+
+<section id="commish-notes">
+  <h2>📢 Commissioner Notes</h2>
+  <textarea id="commish-text" rows="6" placeholder="Enter notes..."></textarea>
+  <br />
+  <button onclick="saveNotes()">Save</button>
+  <div id="commish-display" style="margin-top:1em;"></div>
+</section>
 
   </main>
 
