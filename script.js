@@ -253,6 +253,73 @@ async function analyzeTrade() {
 
   document.getElementById('trade-analysis-results').innerHTML = html;
 }
+async function renderSchedule() {
+  const week = document.getElementById('schedule-week').value;
+
+  const [matchupsRes, rostersRes, usersRes] = await Promise.all([
+    fetch(`https://api.sleeper.app/v1/league/${leagueId}/matchups/${week}`),
+    fetch(`https://api.sleeper.app/v1/league/${leagueId}/rosters`),
+    fetch(`https://api.sleeper.app/v1/league/${leagueId}/users`)
+  ]);
+
+  const matchups = await matchupsRes.json();
+  const rosters = await rostersRes.json();
+  const users = await usersRes.json();
+
+  const userMap = Object.fromEntries(users.map(u => [u.user_id, u.display_name]));
+  const rosterMap = Object.fromEntries(rosters.map(r => [r.roster_id, r]));
+
+  const games = {};
+  matchups.forEach(m => {
+    if (!games[m.matchup_id]) games[m.matchup_id] = [];
+    games[m.matchup_id].push(m);
+  });
+
+  const html = Object.values(games).map(pair => {
+    const teamA = pair[0];
+    const teamB = pair[1];
+    const nameA = userMap[rosterMap[teamA.roster_id]?.owner_id] || 'Team A';
+    const nameB = userMap[rosterMap[teamB.roster_id]?.owner_id] || 'Team B';
+    return `<p><strong>${nameA}</strong> vs <strong>${nameB}</strong></p>`;
+  }).join('');
+
+  document.getElementById('schedule-table').innerHTML = html || 'No matchups available.';
+}
+
+function buildScheduleDropdown() {
+  const weeks = Array.from({ length: 18 }, (_, i) => i + 1);
+  const select = document.getElementById('schedule-week');
+  select.innerHTML = weeks.map(w => `<option value="${w}">Week ${w}</option>`).join('');
+  select.value = new Date().getDay();
+  renderSchedule();
+}
+
+async function fetchWaivers() {
+  const res = await fetch(`https://api.sleeper.app/v1/league/${leagueId}/transactions/1`);
+  const txns = await res.json();
+
+  const adds = txns.filter(t => t.type === 'waiver' && t.adds);
+  const drops = txns.filter(t => t.type === 'waiver' && t.drops);
+
+  const playersRes = await fetch('https://api.sleeper.app/v1/players/nfl');
+  const players = await playersRes.json();
+
+  let html = '';
+
+  adds.slice(0, 5).forEach(txn => {
+    for (const pid in txn.adds) {
+      html += `<p>Added: ${players[pid]?.full_name || pid}</p>`;
+    }
+  });
+
+  drops.slice(0, 5).forEach(txn => {
+    for (const pid in txn.drops) {
+      html += `<p>Dropped: ${players[pid]?.full_name || pid}</p>`;
+    }
+  });
+
+  document.getElementById('waiver-feed').innerHTML = html || '<p>No recent activity</p>';
+}
 
 
 // Load these too
@@ -265,6 +332,8 @@ fetchTrades();
 showManagerProfiles();
 showFuturePicks();
 populateTradeDropdowns();
+buildScheduleDropdown();
+fetchWaivers();
 
 
 fetchLeagueInfo();
