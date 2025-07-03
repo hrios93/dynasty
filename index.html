@@ -8,10 +8,18 @@
 </head>
 <body>
   <header>
-    <h1>🏈 Dynasty League Central</h1>
-    <p>Live info powered by Sleeper</p>
-  </header>
-
+    <h1>🏈 One Team to Rule them All</h1>
+  <nav id="top-nav">
+    <a href="#standings">Standings</a>
+    <a href="#rosters">Rosters</a>
+    <a href="#matchups">Matchups</a>
+    <a href="#power-rankings">Rankings</a>
+    <a href="#schedule">Schedule</a>
+    <a href="#commish-notes">Notes</a>
+    <a href="#champions">Champions</a>
+  </nav>
+</header>
+  
   <main>
     <section id="league-info">
       <h2>League Info</h2>
@@ -51,8 +59,9 @@
 
 <section id="managers">
   <h2>Manager Profiles</h2>
+  <button class="toggle-btn" onclick="toggleSection('manager-profiles')">Toggle View</button>
   <div id="manager-profiles">Loading...</div>
-</section>
+</section>    
     
 <section id="power-rankings">
   <h2>Power Rankings</h2>
@@ -82,6 +91,7 @@
 
 <section id="trade-analyzer">
   <h2>Trade Analyzer</h2>
+  <button class="toggle-btn" onclick="toggleSection('trade-analysis-results')">Toggle View</button>
   <label for="team-a">Team A:</label>
   <select id="team-a"></select>
 
@@ -91,6 +101,8 @@
   <button onclick="analyzeTrade()">Compare</button>
   <div id="trade-analysis-results"></div>
 </section>
+
+
 
 <section id="theme-toggle">
   <h2>Appearance</h2>
@@ -132,12 +144,12 @@
 
 <section id="commish-notes">
   <h2>📢 Commissioner Notes</h2>
+  <button class="toggle-btn" onclick="toggleSection('commish-text')">Toggle View</button>
   <textarea id="commish-text" rows="6" placeholder="Enter notes..."></textarea>
   <br />
   <button onclick="saveNotes()">Save</button>
   <div id="commish-display" style="margin-top:1em;"></div>
 </section>
-
   </main>
 
   <footer>
