@@ -1,6 +1,15 @@
 // Sleeper League ID
 const leagueId = '1180208789911158784';
 
+function toggleSection(id) {
+  const el = document.getElementById(id);
+  if (el.style.display === "none") {
+    el.style.display = "block";
+  } else {
+    el.style.display = "none";
+  }
+}
+
 async function fetchLeagueInfo() {
   const res = await fetch(`https://api.sleeper.app/v1/league/${leagueId}`);
   const data = await res.json();
