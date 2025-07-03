@@ -80,3 +80,20 @@ body.dark table, body.dark th, body.dark td {
   border-color: #444;
   background: #1a1a1a;
 }
+#schedule select {
+  margin: 0.5em 0;
+  padding: 0.3em;
+}
+#champion-gallery {
+  background: #fafafa;
+  padding: 1em;
+  border: 1px solid #ccc;
+}
+#champion-gallery ul {
+  list-style: none;
+  padding-left: 0;
+}
+#champion-gallery li {
+  margin-bottom: 0.5em;
+  font-size: 1.1em;
+}
