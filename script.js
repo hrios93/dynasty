@@ -263,6 +263,8 @@ showPowerRankings();
 populateWeekSelector();
 fetchTrades();
 showManagerProfiles();
+showFuturePicks();
+populateTradeDropdowns();
 
 
 fetchLeagueInfo();
