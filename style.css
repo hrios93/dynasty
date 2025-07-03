@@ -1,0 +1,29 @@
+body {
+  font-family: Arial, sans-serif;
+  margin: 0;
+  padding: 0;
+  background: #f5f5f5;
+  color: #333;
+}
+header {
+  background: #222;
+  color: #fff;
+  padding: 1em;
+  text-align: center;
+}
+main {
+  padding: 1em;
+}
+section {
+  margin-bottom: 2em;
+}
+pre {
+  background: #eee;
+  padding: 1em;
+  overflow-x: auto;
+}
+footer {
+  text-align: center;
+  padding: 1em;
+  background: #ddd;
+}
