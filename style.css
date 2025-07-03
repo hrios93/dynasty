@@ -50,3 +50,16 @@ footer {
   border-radius: 50%;
   margin-top: 0.5em;
 }
+#news-feed article {
+  background: #fff;
+  padding: 1em;
+  margin-bottom: 1em;
+  border-left: 3px solid #0077cc;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+}
+
+#rules-text {
+  background: #fdfdfd;
+  padding: 1em;
+  border: 1px dashed #ccc;
+}
