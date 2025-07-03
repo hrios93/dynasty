@@ -186,6 +186,74 @@ async function showPowerRankings() {
 
   document.getElementById('power-rankings-data').innerHTML = html;
 }
+function toggleDarkMode() {
+  document.body.classList.toggle('dark');
+}
+
+async function showFuturePicks() {
+  // NOTE: Sleeper doesn’t have pick ownership API — this is placeholder logic
+  const usersRes = await fetch(`https://api.sleeper.app/v1/league/${leagueId}/users`);
+  const users = await usersRes.json();
+  const userMap = Object.fromEntries(users.map(u => [u.user_id, u.display_name]));
+
+  // Example static pick data (you can expand or replace with real data)
+  const picks = [
+    { year: 2025, round: 1, owner: userMap[users[0].user_id] },
+    { year: 2025, round: 2, owner: userMap[users[1].user_id] },
+    { year: 2026, round: 1, owner: userMap[users[2].user_id] }
+  ];
+
+  const grouped = {};
+  picks.forEach(p => {
+    const key = `${p.year} Round ${p.round}`;
+    grouped[key] = p.owner;
+  });
+
+  const html = Object.entries(grouped).map(([pick, owner]) => `
+    <p><strong>${pick}</strong>: ${owner}</p>
+  `).join('');
+
+  document.getElementById('pick-table').innerHTML = html;
+}
+
+async function populateTradeDropdowns() {
+  const usersRes = await fetch(`https://api.sleeper.app/v1/league/${leagueId}/users`);
+  const users = await usersRes.json();
+
+  const options = users.map(u => `<option value="${u.user_id}">${u.display_name}</option>`).join('');
+  document.getElementById('team-a').innerHTML = options;
+  document.getElementById('team-b').innerHTML = options;
+}
+
+async function analyzeTrade() {
+  const teamA = document.getElementById('team-a').value;
+  const teamB = document.getElementById('team-b').value;
+
+  const [rostersRes, playersRes] = await Promise.all([
+    fetch(`https://api.sleeper.app/v1/league/${leagueId}/rosters`),
+    fetch('https://api.sleeper.app/v1/players/nfl')
+  ]);
+
+  const rosters = await rostersRes.json();
+  const players = await playersRes.json();
+
+  const rosterA = rosters.find(r => r.owner_id === teamA);
+  const rosterB = rosters.find(r => r.owner_id === teamB);
+
+  const listPlayers = r =>
+    (r.players || []).map(pid => players[pid]?.full_name || pid).slice(0, 10).join(', ') || 'No players listed';
+
+  const html = `
+    <h4>Team A Roster Preview:</h4>
+    <p>${listPlayers(rosterA)}</p>
+    <h4>Team B Roster Preview:</h4>
+    <p>${listPlayers(rosterB)}</p>
+    <p><em>You can use this as a visual aid to discuss trades.</em></p>
+  `;
+
+  document.getElementById('trade-analysis-results').innerHTML = html;
+}
+
 
 // Load these too
 buildTeamPages();
