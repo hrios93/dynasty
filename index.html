@@ -1,38 +1,155 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Dynasty League Hub</title>
+  <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <link rel="stylesheet" href="style.css">
+  <title>Dynasty League Hub</title>
+  <link rel="stylesheet" href="style.css" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
   <header>
     <h1>🏈 One Team to Rule them All</h1>
-    <nav id="top-nav"></nav>
+    <nav id="top-nav">
+      <a href="#standings">Standings</a>
+      <a href="#rosters">Rosters</a>
+      <a href="#team-pages">Teams</a>
+      <a href="#matchups">Matchups</a>
+      <a href="#power-rankings">Rankings</a>
+      <a href="#schedule">Schedule</a>
+      <a href="#trades">Trades</a>
+      <a href="#waiver-wire">Waivers</a>
+      <a href="#polls">Polls</a>
+      <a href="#scoring-trends">Trends</a>
+      <a href="#rulebook">Rules</a>
+      <a href="#news-posts">News</a>
+      <a href="#champions">Champions</a>
+      <a href="#commish-notes">Notes</a>
+    </nav>
   </header>
+
   <main>
-    <section id="league-info"><h2>League Info</h2><div id="league-data">Loading...</div></section>
-    <section id="standings"><h2>Standings</h2><div id="standings-data">Loading...</div></section>
-    <section id="rosters"><h2>Rosters</h2><div id="rosters-data">Loading...</div></section>
-    <section id="matchups"><h2>Weekly Matchups</h2><select id="week-select" onchange="fetchMatchups()"></select><div id="matchups-data">Loading...</div></section>
-    <section id="draft-board"><h2>Draft Board</h2><div id="draft-data"></div></section>
-    <section id="trades"><h2>Trade Tracker</h2><div id="trade-feed"></div></section>
-    <section id="managers"><h2>Managers</h2><div id="manager-profiles"></div></section>
-    <section id="power-rankings"><h2>Power Rankings</h2><div id="power-rankings-data"></div></section>
-    <section id="rulebook"><h2>Rules & Player Aging</h2><div id="rules-text"></div></section>
-    <section id="news-posts"><h2>League News</h2><div id="news-feed"></div></section>
-    <section id="pick-tracker"><h2>Future Picks</h2><div id="pick-table"></div></section>
-    <section id="trade-analyzer"><h2>Trade Analyzer</h2><label for="team-a">Team A:</label><select id="team-a"></select><label for="team-b">Team B:</label><select id="team-b"></select><button onclick="analyzeTrade()">Compare</button><div id="trade-analysis-results"></div></section>
-    <section id="theme-toggle"><h2>Theme</h2><button onclick="toggleDarkMode()">Toggle Dark Mode</button></section>
-    <section id="schedule"><h2>Matchup Schedule</h2><select id="schedule-week" onchange="renderSchedule()"></select><div id="schedule-table"></div></section>
-    <section id="waiver-wire"><h2>Waiver Wire</h2><div id="waiver-feed"></div></section>
-    <section id="scoring-trends"><h2>Scoring Trends</h2><canvas id="trendChart"></canvas></section>
-    <section id="polls"><h2>League Polls</h2><div id="poll-section"></div></section>
-    <section id="commish-notes"><h2>Commish Notes</h2><textarea id="commish-text" rows="4" cols="50"></textarea><button onclick="saveNotes()">Save</button><div id="commish-display"></div></section>
+    <section id="league-info">
+      <h2>League Info</h2>
+      <div id="league-data">Loading...</div>
+    </section>
+
+    <section id="standings">
+      <h2>Standings</h2>
+      <div id="standings-data">Loading...</div>
+    </section>
+
+    <section id="rosters">
+      <h2>Team Rosters</h2>
+      <div id="rosters-data">Loading...</div>
+    </section>
+
+    <section id="team-pages">
+      <h2>Team Pages</h2>
+      <div id="team-tabs">Loading avatars...</div>
+      <div id="team-page-display">Select a team above</div>
+    </section>
+
+    <section id="matchups">
+      <h2>Weekly Matchups</h2>
+      <label for="week-select">Select Week:</label>
+      <select id="week-select"></select>
+      <div id="matchups-data">Loading...</div>
+    </section>
+
+    <section id="power-rankings">
+      <h2>Power Rankings</h2>
+      <div id="power-rankings-data">Loading...</div>
+    </section>
+
+    <section id="schedule">
+      <h2>Schedule</h2>
+      <label for="schedule-week">Select Week:</label>
+      <select id="schedule-week"></select>
+      <div id="schedule-table">Loading...</div>
+    </section>
+
+    <section id="trades">
+      <h2>Recent Trades</h2>
+      <div id="trade-feed">Loading...</div>
+      <h3>Trade Analyzer</h3>
+      <div id="trade-analyzer">
+        <label for="team-a">Team A:</label>
+        <select id="team-a"></select>
+        <label for="team-b">Team B:</label>
+        <select id="team-b"></select>
+        <button onclick="analyzeTrade()">Compare</button>
+        <div id="trade-analysis-results"></div>
+        <small>Values sourced from FantasyCalc Superflex Trade Calculator</small>
+      </div>
+    </section>
+
+    <section id="waiver-wire">
+      <h2>Waiver Wire Activity</h2>
+      <div id="waiver-feed">Loading...</div>
+    </section>
+
+    <section id="polls">
+      <h2>League Polls</h2>
+      <form id="poll-form">
+        <input type="text" id="poll-question" placeholder="Poll Question" required />
+        <input type="text" id="poll-option-1" placeholder="Option 1" required />
+        <input type="text" id="poll-option-2" placeholder="Option 2" required />
+        <button type="submit">Create Poll</button>
+      </form>
+      <div id="polls-container">Loading polls...</div>
+    </section>
+
+    <section id="scoring-trends">
+      <h2>Team Scoring Trends</h2>
+      <canvas id="trendChart"></canvas>
+    </section>
+
+    <section id="rulebook">
+      <h2>League Rulebook & Player Development</h2>
+      <div id="rules-text">
+        <p><em>League rules and bylaws go here...</em></p>
+        <div id="aging-trends">Loading aging data...</div>
+      </div>
+    </section>
+
+    <section id="news-posts">
+      <h2>Commissioner’s Corner</h2>
+      <div id="news-feed">
+        <article>
+          <h3>Welcome to Dynasty HQ!</h3>
+          <p>This site houses standings, trades, draft info, and more.</p>
+        </article>
+      </div>
+      <div id="event-feed-container">
+        <button onclick="toggleSection('event-feed')">Toggle League Event Feed</button>
+        <div id="event-feed" style="display:none;">Loading events...</div>
+      </div>
+    </section>
+
+    <section id="champions">
+      <h2>🏆 League Champions</h2>
+      <ul>
+        <li><strong>2024:</strong> TBD</li>
+        <li><strong>2023:</strong> Team Alpha</li>
+        <li><strong>2022:</strong> Team Bravo</li>
+        <li><strong>2021:</strong> Team Charlie</li>
+      </ul>
+    </section>
+
+    <section id="commish-notes">
+      <h2>Commissioner Notes</h2>
+      <textarea id="commish-text" rows="5" placeholder="Write league updates here..."></textarea>
+      <br />
+      <button onclick="saveNotes()">Save</button>
+      <div id="commish-display"></div>
+    </section>
   </main>
-  <footer><p>Made by Commissioner Harny Rios</p></footer>
+
+  <footer>
+    <p>Made by Commissioner Harny Rios</p>
+  </footer>
+
   <script src="script.js"></script>
 </body>
 </html>
