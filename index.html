@@ -1,2 +1,38 @@
-<!-- Updated index.html with all integrated features -->
-<!-- Placeholder content -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Dynasty League Hub</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <header>
+    <h1>🏈 One Team to Rule them All</h1>
+    <nav id="top-nav"></nav>
+  </header>
+  <main>
+    <section id="league-info"><h2>League Info</h2><div id="league-data">Loading...</div></section>
+    <section id="standings"><h2>Standings</h2><div id="standings-data">Loading...</div></section>
+    <section id="rosters"><h2>Rosters</h2><div id="rosters-data">Loading...</div></section>
+    <section id="matchups"><h2>Weekly Matchups</h2><select id="week-select" onchange="fetchMatchups()"></select><div id="matchups-data">Loading...</div></section>
+    <section id="draft-board"><h2>Draft Board</h2><div id="draft-data"></div></section>
+    <section id="trades"><h2>Trade Tracker</h2><div id="trade-feed"></div></section>
+    <section id="managers"><h2>Managers</h2><div id="manager-profiles"></div></section>
+    <section id="power-rankings"><h2>Power Rankings</h2><div id="power-rankings-data"></div></section>
+    <section id="rulebook"><h2>Rules & Player Aging</h2><div id="rules-text"></div></section>
+    <section id="news-posts"><h2>League News</h2><div id="news-feed"></div></section>
+    <section id="pick-tracker"><h2>Future Picks</h2><div id="pick-table"></div></section>
+    <section id="trade-analyzer"><h2>Trade Analyzer</h2><label for="team-a">Team A:</label><select id="team-a"></select><label for="team-b">Team B:</label><select id="team-b"></select><button onclick="analyzeTrade()">Compare</button><div id="trade-analysis-results"></div></section>
+    <section id="theme-toggle"><h2>Theme</h2><button onclick="toggleDarkMode()">Toggle Dark Mode</button></section>
+    <section id="schedule"><h2>Matchup Schedule</h2><select id="schedule-week" onchange="renderSchedule()"></select><div id="schedule-table"></div></section>
+    <section id="waiver-wire"><h2>Waiver Wire</h2><div id="waiver-feed"></div></section>
+    <section id="scoring-trends"><h2>Scoring Trends</h2><canvas id="trendChart"></canvas></section>
+    <section id="polls"><h2>League Polls</h2><div id="poll-section"></div></section>
+    <section id="commish-notes"><h2>Commish Notes</h2><textarea id="commish-text" rows="4" cols="50"></textarea><button onclick="saveNotes()">Save</button><div id="commish-display"></div></section>
+  </main>
+  <footer><p>Made by Commissioner Harny Rios</p></footer>
+  <script src="script.js"></script>
+</body>
+</html>

@@ -1,2 +1,2 @@
-// Updated script.js with FantasyCalc, polls, event feed, etc.
-// Placeholder content
+// Placeholder - full logic will be added in actual project ZIP
+console.log('Dynasty script loaded');
