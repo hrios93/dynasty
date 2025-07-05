@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>League Rules & Polls</title>
+  <link rel="stylesheet" href="style.css" />
+  <script type="module" src="script.js" defer></script>
+</head>
+<body>
+  <header>
+    <h1>📜 League Rules & Polls</h1>
+  </header>
+
+  <nav id="top-nav">
+    <a href="index.html">Home</a>
+    <a href="teams.html">Teams</a>
+    <a href="rules.html">Rules</a>
+    <a href="analysis.html">Analysis</a>
+    <button id="theme-toggle" class="toggle-btn">🌓</button>
+  </nav>
+
+  <main>
+    <section>
+      <button class="toggle-btn" onclick="toggleSection('polls-section')">📊 Toggle League Polls</button>
+      <div id="polls-section" style="display:none">
+        <div id="polls-container"></div>
+
+        <div id="create-poll-form" style="margin-top: 1em;">
+          <h3>Create a New Poll</h3>
+          <input type="text" id="poll-question" placeholder="Enter poll question" style="width:100%;margin-bottom:0.5em;" />
+          <textarea id="poll-options" placeholder="Enter poll options (one per line)" style="width:100%;height:80px;margin-bottom:0.5em;"></textarea>
+          <label><input type="checkbox" id="poll-multi" /> Allow multiple selections</label><br/>
+          <button onclick="submitPoll()">Submit Poll</button>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>League Rules</h2>
+      <div id="rules-display" class="editable-section"></div>
+
+      <div id="rules-edit-container" style="margin-top: 1em;">
+        <textarea id="rules-editor" style="width: 100%; height: 150px;"></textarea><br/>
+        <button onclick="saveRules()">💾 Save Rules</button>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <p>&copy; 2025 Dynasty League Manager</p>
+  </footer>
+</body>
+</html>
