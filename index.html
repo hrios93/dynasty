@@ -2,45 +2,61 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Dynasty League Hub</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Dynasty League Home</title>
   <link rel="stylesheet" href="style.css" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script type="module" src="script.js" defer></script>
 </head>
 <body>
   <header>
-    <h1>🏈 One Team to Rule them All</h1>
-    <nav id="top-nav">
-      <a href="#standings">Standings</a>
-      <a href="#rosters">Rosters</a>
-      <a href="#matchups">Matchups</a>
-      <a href="#power-rankings">Rankings</a>
-      <a href="#schedule">Schedule</a>
-      <a href="#commish-notes">Notes</a>
-      <a href="#champions">Champions</a>
-    </nav>
+    <h1>🏈 Dynasty Fantasy Football League</h1>
+    <div id="league-data" class="subheader"></div>
   </header>
+
+  <!-- Floating Navigation Bar -->
+  <nav id="top-nav">
+    <a href="index.html">Home</a>
+    <a href="teams.html">Teams</a>
+    <a href="rules.html">Rules</a>
+    <a href="analysis.html">Analysis</a>
+    <button id="theme-toggle" class="toggle-btn">🌓</button>
+  </nav>
+
   <main>
-    <section id="league-info"><h2>League Info</h2><div id="league-data">Loading...</div></section>
-    <section id="standings"><h2>Standings</h2><div id="standings-data">Loading...</div></section>
-    <section id="rosters"><h2>Team Rosters</h2><div id="rosters-data">Loading...</div></section>
-    <section id="draft-board"><h2>Draft Board</h2><div id="draft-data">Loading...</div></section>
-    <section id="trades"><h2>Trade Tracker</h2><div id="trade-data">Loading...</div></section>
-    <section id="matchups"><h2>Weekly Matchups</h2><label for="week-select">Select Week:</label><select id="week-select" onchange="fetchMatchups()"></select><div id="matchups-data">Loading...</div></section>
-    <section id="managers"><h2>Manager Profiles</h2><button class="toggle-btn" onclick="toggleSection('manager-profiles')">Toggle View</button><div id="manager-profiles">Loading...</div></section>
-    <section id="power-rankings"><h2>Power Rankings</h2><div id="power-rankings-data">Loading...</div></section>
-    <section id="rulebook"><h2>League Rulebook</h2><div id="rules-text"><p><em>Add your rules and bylaws here...</em></p></div></section>
-    <section id="news-posts"><h2>Commissioner’s Corner</h2><div id="news-feed"><article><h3>Welcome to the New Dynasty HQ!</h3><p>This site will house standings, trades, draft info, and more.</p></article></div></section>
-    <section id="pick-tracker"><h2>Future Pick Ownership</h2><div id="pick-table">Loading...</div></section>
-    <section id="trade-analyzer"><h2>Trade Analyzer</h2><button class="toggle-btn" onclick="toggleSection('trade-analysis-results')">Toggle View</button><label for="team-a">Team A:</label><select id="team-a"></select><label for="team-b">Team B:</label><select id="team-b"></select><button onclick="analyzeTrade()">Compare</button><div id="trade-analysis-results"></div></section>
-    <section id="theme-toggle"><h2>Appearance</h2><button onclick="toggleDarkMode()">Toggle Dark Mode</button></section>
-    <section id="schedule"><h2>Weekly Matchup Schedule</h2><label for="schedule-week">Select Week:</label><select id="schedule-week" onchange="renderSchedule()"></select><div id="schedule-table">Loading...</div></section>
-    <section id="waiver-wire"><h2>Recent Waiver Adds & Drops</h2><div id="waiver-feed">Loading...</div></section>
-    <section id="champions"><h2>🏆 League Champions</h2><div id="champion-gallery"><ul><li><strong>2023:</strong> Team Alpha</li><li><strong>2022:</strong> Team Bravo</li><li><strong>2021:</strong> Team Charlie</li></ul><p><em>Add more past champs manually here!</em></p></div></section>
-    <section id="scoring-trends"><h2>Team Scoring Trends</h2><canvas id="trendChart" width="100%" height="60"></canvas></section>
-    <section id="export-tools"><h2>📥 Export League Data</h2><button onclick="downloadStandingsCSV()">Download Standings CSV</button><button onclick="downloadRostersCSV()">Download Rosters CSV</button></section>
-    <section id="commish-notes"><h2>📢 Commissioner Notes</h2><button class="toggle-btn" onclick="toggleSection('commish-text')">Toggle View</button><textarea id="commish-text" rows="6" placeholder="Enter notes..."></textarea><br /><button onclick="saveNotes()">Save</button><div id="commish-display" style="margin-top:1em;"></div></section>
+    <!-- Standings + Power Rankings + Matchups -->
+    <section>
+      <h2>Standings, Power Rankings & Matchups</h2>
+      <div id="standings-data"></div>
+      <canvas id="trendChart"></canvas>
+    </section>
+
+    <!-- Waivers -->
+    <section>
+      <h2>Recent Waiver Activity</h2>
+      <div id="waiver-feed"></div>
+    </section>
+
+    <!-- Events Feed -->
+    <section>
+      <h2>
+        <button class="toggle-btn" onclick="toggleSection('event-feed')">📅 Show/Hide Events Feed</button>
+      </h2>
+      <div id="event-feed" style="display:none;"></div>
+    </section>
+
+    <!-- League Champion Gallery (optional placeholder) -->
+    <section id="champion-gallery">
+      <h2>🏆 Past Champions</h2>
+      <ul>
+        <li>2024 – TBD</li>
+        <li>2023 – TBD</li>
+      </ul>
+    </section>
   </main>
-  <footer><p>Made by Commissioner Harny Rios</p></footer>
-  <script src="script.js"></script>
+
+  <footer>
+    <p>&copy; 2025 Dynasty League Manager</p>
+  </footer>
 </body>
 </html>
