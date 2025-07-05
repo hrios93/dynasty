@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>League Analysis</title>
+  <link rel="stylesheet" href="style.css" />
+  <script type="module" src="script.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <header>
+    <h1>📊 League Analysis</h1>
+  </header>
+
+  <nav id="top-nav">
+    <a href="index.html">Home</a>
+    <a href="teams.html">Teams</a>
+    <a href="rules.html">Rules</a>
+    <a href="analysis.html">Analysis</a>
+    <button id="theme-toggle" class="toggle-btn">🌓</button>
+  </nav>
+
+  <main>
+    <section id="trade-analyzer">
+      <h2>🤝 Trade Analyzer (via FantasyCalc)</h2>
+      <label for="team-a">Team A:</label>
+      <select id="team-a"></select>
+      <label for="team-b">Team B:</label>
+      <select id="team-b"></select>
+      <button onclick="analyzeTrade()">Compare Trade</button>
+      <div id="trade-analysis-results"></div>
+      <p class="disclaimer">Trade values from <strong>FantasyCalc Superflex</strong>.</p>
+    </section>
+
+    <section id="scoring-trends">
+      <h2>📈 Team Scoring Trends</h2>
+      <canvas id="trendChart" width="100%" height="60"></canvas>
+    </section>
+
+    <section id="aging-trends">
+      <h2>📅 Player Aging & Development Trends</h2>
+      <canvas id="age-curve-chart"></canvas>
+      <div id="team-age-breakdowns">Loading...</div>
+    </section>
+
+    <section id="recent-trades">
+      <h2>🔄 Recent Trades</h2>
+      <div id="trade-feed">Loading...</div>
+    </section>
+
+    <section id="waiver-wire">
+      <h2>📥 Waiver Adds & Drops</h2>
+      <div id="waiver-feed">Loading...</div>
+    </section>
+  </main>
+
+  <footer>
+    <p>© 2025 Dynasty League Tools</p>
+  </footer>
+</body>
+</html>
