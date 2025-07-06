@@ -167,3 +167,57 @@ window.saveRules = saveRules;
 
 if (document.getElementById("rules-display")) loadRules();
 if (document.getElementById("polls-feed")) loadPolls();
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
+import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js";
+
+// Your Firebase config
+const firebaseConfig = {
+  apiKey: "AIzaSyBTY-rF1jHLFyPjtQ5NVNTKAO7_9ts8MjI",
+  authDomain: "dynastyboard.firebaseapp.com",
+  projectId: "dynastyboard",
+  storageBucket: "dynastyboard.firbasestorage.app",
+  messagingSenderId: "437736128588",
+  appId: "1:437736128588:web:5f53329d49c4b3ccc4b4e9"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const provider = new GoogleAuthProvider();
+
+// Start login flow
+function startLogin() {
+  signInWithPopup(auth, provider)
+    .then((result) => {
+      console.log("Signed in:", result.user);
+    })
+    .catch((error) => {
+      console.error("Login failed:", error);
+    });
+}
+
+// Logout
+function logout() {
+  signOut(auth);
+}
+
+// Auth state changes
+onAuthStateChanged(auth, (user) => {
+  const loginBtn = document.getElementById("login-btn");
+  const logoutBtn = document.getElementById("logout-btn");
+  const userInfo = document.getElementById("user-info");
+
+  if (user) {
+    loginBtn.style.display = "none";
+    logoutBtn.style.display = "inline";
+    userInfo.innerText = `Welcome, ${user.displayName || user.email}`;
+    window.currentUser = user;
+  } else {
+    loginBtn.style.display = "inline";
+    logoutBtn.style.display = "none";
+    userInfo.innerText = "";
+    window.currentUser = null;
+  }
+});
+
+
