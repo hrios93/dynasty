@@ -1,0 +1,23 @@
+/* Reset & Base */ *{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:system-ui;background:#f5f5f5;color:#333;transition:all .3s;}
+header,footer{background:#222;color:#fff;padding:1em;text-align:center;}
+footer{background:#ddd;color:#333;}
+#top-nav{position:sticky;top:0;background:#111;display:flex;justify-content:center;gap:1em;padding:.8em;z-index:100;}
+#top-nav a,#top-nav button{color:#fff;background:none;border:none;cursor:pointer;text-decoration:none;font-weight:bold;}
+#top-nav a:hover,#top-nav button:hover{text-decoration:underline;}
+main{padding:1em;}
+section{background:#fff;border-radius:8px;box-shadow:0 0 8px rgba(0,0,0,.05);margin:1em auto;padding:1em;max-width:960px;}
+h2{margin-bottom:.5em;}
+.toggle-btn{background:#eee;padding:.5em 1em;border:none;cursor:pointer;}
+.toggle-btn:hover{background:#ddd;}
+.dark body{background:#121212;color:#eee;}
+.dark header, .dark footer, .dark #top-nav{background:#1e1e1e;color:#eee;}
+.dark section{background:#1c1c1c;color:#f0f0f0;}
+.dark .toggle-btn{background:#444;color:#fff;}
+.dark .toggle-btn:hover{background:#555;}
+.team-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:1em;margin-bottom:1em;}
+.avatar{width:48px;height:48px;border-radius:50%;object-fit:cover;margin-right:.5em;}
+.roster{margin-bottom:1em;padding:1em;border-left:4px solid #0077cc;background:#fafafa;border-radius:4px;}
+table{width:100%;border-collapse:collapse;margin-top:1em;}
+th,td{border:1px solid #ccc;padding:.6em;text-align:center;}
+th{background:#f0f0f0;}

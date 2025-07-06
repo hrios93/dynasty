@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>📊 Analysis</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <header>
+    <h1>League Analysis</h1>
+    <nav id="top-nav">
+      <a href="index.html">Home</a>
+      <a href="teams.html">Teams</a>
+      <a href="analysis.html">Analysis</a>
+      <a href="rules.html">Rules</a>
+      <button id="theme-toggle" class="toggle-btn">🌓</button>
+    </nav>
+  </header>
+
+  <main>
+    <section id="trade-analyzer">
+      <h2>🤝 Trade Analyzer</h2>
+      <p><em>Powered by FantasyCalc Superflex</em></p>
+      <label>Team A:</label><select id="team-a"></select>
+      <label>Team B:</label><select id="team-b"></select>
+      <button onclick="analyzeTrade()">Compare</button>
+      <div id="trade-analysis-results">Loading...</div>
+    </section>
+
+    <section id="scoring-trends">
+      <h2>📈 Scoring Trends</h2>
+      <canvas id="scoringTrendChart" height="200"></canvas>
+    </section>
+
+    <section id="aging-trends">
+      <h2>🧬 Player Aging & Development</h2>
+      <canvas id="ageCurveChart" height="200"></canvas>
+      <div id="team-age-breakdowns">Loading...</div>
+    </section>
+
+    <section id="recent-trades">
+      <h2>🔄 Recent Trades</h2>
+      <div id="trade-feed">Loading...</div>
+    </section>
+
+    <section id="waiver-section">
+      <h2>📥 Waiver Moves</h2>
+      <div id="waiver-feed">Loading...</div>
+    </section>
+  </main>
+
+  <footer>
+    <p>&copy; 2025 Dynasty League Manager</p>
+  </footer>
+  <script src="script.js"></script>
+</body>
+</html>
