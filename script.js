@@ -14,11 +14,18 @@ function startLogin(){
   auth.signInWithPopup(provider);
 }
 function logout(){ auth.signOut(); }
-auth.onAuthStateChanged(user=>{
-  currentUser=user;
-  document.getElementById('login-btn').style.display = user?'none':'inline';
-  document.getElementById('logout-btn').style.display = user?'inline':'none';
-  document.getElementById('user-info').innerText = user?`Hello, ${user.displayName}`:'';
+auth.onAuthStateChanged(user => {
+  const loginBtn = document.getElementById('login-btn');
+  const logoutBtn = document.getElementById('logout-btn');
+  const userInfo = document.getElementById('user-info');
+  if (loginBtn && logoutBtn && userInfo) {
+    loginBtn.style.display = user ? 'none' : 'inline';
+    logoutBtn.style.display = user ? 'inline' : 'none';
+    userInfo.innerText = user ? `Hello, ${user.displayName}` : '';
+  }
+  /* … the rest of your init calls … */
+});
+
   loadRules(); loadPolls(); loadEvents();
 });
 
