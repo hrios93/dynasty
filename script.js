@@ -86,33 +86,45 @@ async function fetchLeagueInfo() {
 
 // 2. Standings + Upcoming Matchup + Power Score
 async function fetchStandings() {
+  const container = document.getElementById("standings-data");
+  if (!container) return;
   try {
     const [rs, us] = await Promise.all([
       fetch(`https://api.sleeper.app/v1/league/${leagueId}/rosters`).then(r => r.json()),
       fetch(`https://api.sleeper.app/v1/league/${leagueId}/users`).then(r => r.json())
     ]);
-    const userMap = Object.fromEntries(us.map(u=>[u.user_id,u.display_name]));
+    const userMap = Object.fromEntries(us.map(u => [u.user_id, u.display_name]));
 
-    rs.sort((a,b) => b.settings.wins - a.settings.wins || b.settings.fpts - a.settings.fpts);
+    // sort by wins then fpts
+    rs.sort((a, b) => {
+      const aw = a.settings.wins ?? 0, bw = b.settings.wins ?? 0;
+      if (bw !== aw) return bw - aw;
+      const af = a.settings.fpts ?? 0, bf = b.settings.fpts ?? 0;
+      return bf - af;
+    });
 
     let rows = "";
-    rs.forEach((r,i) => {
-      const owner = userMap[r.owner_id]||"Unknown";
+    rs.forEach((r, i) => {
+      const owner = userMap[r.owner_id] || "Unknown";
+      const wins = r.settings.wins ?? 0;
+      const losses = r.settings.losses ?? 0;
+      const fpts = r.settings.fpts ?? 0;
+      const fpts_against = r.settings.fpts_against ?? 0;
       const lastOpp = "-"; // placeholder
       const nextOpp = "-"; // placeholder
       rows += `<tr>
-        <td>${i+1}</td>
+        <td>${i + 1}</td>
         <td><a href="teams.html#${r.owner_id}">${owner}</a></td>
-        <td>${r.settings.wins}-${r.settings.losses}</td>
-        <td>${r.settings.fpts.toFixed(1)}</td>
-        <td>${r.settings.fpts_against.toFixed(1)}</td>
-        <td>${i+1}</td>
+        <td>${wins}-${losses}</td>
+        <td>${fpts.toFixed(1)}</td>
+        <td>${fpts_against.toFixed(1)}</td>
+        <td>${i + 1}</td>
         <td>${lastOpp}</td>
         <td>${nextOpp}</td>
       </tr>`;
     });
 
-    document.getElementById("standings-data").innerHTML = `
+    container.innerHTML = `
       <table>
         <thead>
           <tr>
@@ -122,9 +134,10 @@ async function fetchStandings() {
         </thead>
         <tbody>${rows}</tbody>
       </table>`;
-  } catch(e) {
+  } catch (e) {
     console.error("Standings Error:", e);
   }
+}
 }
 
 // 3. Waiver Feed
