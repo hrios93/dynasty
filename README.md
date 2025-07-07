@@ -4,6 +4,7 @@ Welcome to your custom-built Dynasty Fantasy Football League Website, powered by
 
 ## 🔍 Features
 
+
 - Live Sleeper integration (standings, rosters, matchups, waivers, trades)
 - Power Rankings & Scoring Trends charts
 - Team Pages with avatar tabs and position-grouped rosters
