@@ -87,23 +87,19 @@ async function fetchLeagueInfo() {
 // 2. Standings + Upcoming Matchup + Power Score
 async function fetchStandings() {
   try {
-    // get rosters and users
     const [rs, us] = await Promise.all([
       fetch(`https://api.sleeper.app/v1/league/${leagueId}/rosters`).then(r => r.json()),
       fetch(`https://api.sleeper.app/v1/league/${leagueId}/users`).then(r => r.json())
     ]);
     const userMap = Object.fromEntries(us.map(u=>[u.user_id,u.display_name]));
 
-    // sort by wins then fpts
     rs.sort((a,b) => b.settings.wins - a.settings.wins || b.settings.fpts - a.settings.fpts);
 
-    // build table rows
-    let rows = "", week = new Date().getWeek(); // you can define getWeek if you want current NFL week
-    for (let i=0; i<rs.length; i++) {
-      const r = rs[i];
+    let rows = "";
+    rs.forEach((r,i) => {
       const owner = userMap[r.owner_id]||"Unknown";
-      // find last & next opponent placeholders:
-      const lastOpp = "-", nextOpp = "-";
+      const lastOpp = "-"; // placeholder
+      const nextOpp = "-"; // placeholder
       rows += `<tr>
         <td>${i+1}</td>
         <td><a href="teams.html#${r.owner_id}">${owner}</a></td>
@@ -114,7 +110,7 @@ async function fetchStandings() {
         <td>${lastOpp}</td>
         <td>${nextOpp}</td>
       </tr>`;
-    }
+    });
 
     document.getElementById("standings-data").innerHTML = `
       <table>
@@ -134,18 +130,17 @@ async function fetchStandings() {
 // 3. Waiver Feed
 async function fetchWaivers() {
   try {
-    const tx = await fetch(`https://api.sleeper.app/v1/league/${leagueId}/transactions/1`)
-      .then(r=>r.json());
+    const tx = await fetch(`https://api.sleeper.app/v1/league/${leagueId}/transactions/1`).then(r=>r.json());
     const adds  = tx.filter(t=>t.type==="waiver"&&t.adds);
     const drops = tx.filter(t=>t.type==="waiver"&&t.drops);
-    const players = await fetch("https://api.sleeper.app/v1/players/nfl").then(r=>r.json());
+    const players = await fetch('https://api.sleeper.app/v1/players/nfl').then(r=>r.json());
     let html="";
-    adds.slice(0,5).forEach(t=> {
+    adds.slice(0,5).forEach(t=>{
       Object.keys(t.adds).forEach(pid=>{
         html+=`<p>📥 ${players[pid]?.full_name||pid}</p>`;
       });
     });
-    drops.slice(0,5).forEach(t=> {
+    drops.slice(0,5).forEach(t=>{
       Object.keys(t.drops).forEach(pid=>{
         html+=`<p>❌ ${players[pid]?.full_name||pid}</p>`;
       });
@@ -172,7 +167,6 @@ async function loadEvents() {
       container.innerHTML = html;
     });
 }
-// Utility to log events
 async function logEvent(desc,type="misc") {
   await db.collection("events").add({ desc, type, timestamp: firebase.firestore.FieldValue.serverTimestamp() });
 }
@@ -189,7 +183,7 @@ async function submitPoll() {
     createdBy: currentUser?.displayName||"Anonymous",
     timestamp: firebase.firestore.FieldValue.serverTimestamp()
   });
-  logEvent(`Poll created: "${title}"`,"poll");
+  logEvent(`Poll created: "${title}"`,`poll`);
 }
 async function votePoll(pid,multi) {
   const snap = await db.collection("polls").doc(pid).get();
@@ -197,7 +191,6 @@ async function votePoll(pid,multi) {
   const choices = Array.from(document.querySelectorAll(`[name=poll-${pid}]`))
     .filter(i=>i.checked).map(i=>i.value);
   if(!choices.length) return alert("Select at least one");
-  // update votes
   data.options.forEach(opt=>{
     let set = new Set(data.votes[opt]);
     if (choices.includes(opt)) set.add(currentUser.uid);
@@ -212,8 +205,7 @@ function renderPoll(doc) {
   let html = `<article><h3>${p.title}</h3>`;
   if(!hasVoted) {
     html += p.options.map(opt=>
-      `<label><input type="${p.multi?"checkbox":"radio"}"
-        name="poll-${doc.id}" value="${opt}"> ${opt}</label><br>`
+      `<label><input type="${p.multi?"checkbox":"radio"}" name="poll-${doc.id}" value="${opt}"> ${opt}</label><br>`
     ).join("");
     html += `<button onclick="votePoll('${doc.id}',${p.multi})">Vote</button>`;
   } else {
@@ -245,7 +237,6 @@ async function loadRules() {
   const txt = docRef.exists ? docRef.data().text : "No rules set.";
   disp.innerText = txt;
   edit.value    = txt;
-  // show edit button only to commissioner
   if (currentUser?.email === "harnyrios@me.com") {
     editBtn.style.display = "inline-block";
   }
@@ -272,23 +263,13 @@ async function saveRules() {
   loadRules();
 }
 
-// 7. Charts & Analysis Helpers
-async function drawTrendChart() {
-  // placeholder: implement data collection and Chart.js instantiation
-}
-async function drawAgeCurve() {
-  // placeholder
-}
-
-// ——————————————————————————————————
-// Initialization on DOM Ready
-// ——————————————————————————————————
-document.addEventListener("DOMContentLoaded", () => {
+// 7. Initialization
+window.addEventListener("load", () => {
   fetchLeagueInfo();
   fetchStandings();
   fetchWaivers();
   loadEvents();
+  // Optionally drawTrendChart(); drawAgeCurve();
   loadPolls();
   loadRules();
-  // optionally call drawTrendChart(), drawAgeCurve()
 });
