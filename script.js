@@ -152,6 +152,85 @@ async function fetchWaivers() {
   }
 }
 
+// ——————————————————————————————————
+// Teams Page: selector + details
+// ——————————————————————————————————
+async function fetchTeams() {
+  const grid = document.getElementById("team-selector");
+  const details = document.getElementById("team-pages");
+  if (!grid || !details) return;
+
+  // Fetch users + rosters
+  const [users, rosters] = await Promise.all([
+    fetch(`https://api.sleeper.app/v1/league/${leagueId}/users`).then(r=>r.json()),
+    fetch(`https://api.sleeper.app/v1/league/${leagueId}/rosters`).then(r=>r.json())
+  ]);
+  const userMap = Object.fromEntries(users.map(u=>[u.user_id,u]));
+
+  // Build selector grid
+  grid.innerHTML = users.map(u => {
+    const avatar = u.avatar ? 
+      `<img class="avatar" src="https://sleepercdn.com/avatars/thumbs/${u.avatar}" alt="">`
+      : `<div class="avatar"></div>`;
+    return `<div class="team-tab" data-id="${u.user_id}">
+      ${avatar}<div>${u.display_name}</div>
+    </div>`;
+  }).join("");
+
+  // Click handler
+  document.querySelectorAll(".team-tab").forEach(tab=>{
+    tab.onclick = () => {
+      const id = tab.dataset.id;
+      renderTeamPage(id, rosters, userMap);
+    };
+  });
+
+  // Optionally auto‐select first
+  if (users[0]) document.querySelector(".team-tab").click();
+}
+
+function renderTeamPage(userId, rosters, userMap) {
+  const details = document.getElementById("team-pages");
+  const roster = rosters.find(r=>r.owner_id===userId);
+  if (!roster) {
+    details.innerHTML = "<p>No roster found</p>";
+    return;
+  }
+  // Group by position
+  const players = roster.players.map(pid => pid); // or fetch names if you want
+  details.innerHTML = `
+    <h3>${userMap[userId].display_name}</h3>
+    <p><strong>W-L:</strong> ${roster.settings.wins}-${roster.settings.losses}</p>
+    <p><strong>Points For:</strong> ${roster.settings.fpts.toFixed(1)}</p>
+    <h4>Roster:</h4>
+    <ul>${players.map(p=>`<li>${p}</li>`).join("")}</ul>
+  `;
+}
+
+// ——————————————————————————————————
+// Analysis Page: basic chart & trade dropdowns
+// ——————————————————————————————————
+async function initAnalysis() {
+  const teamA = document.getElementById("team-a");
+  const teamB = document.getElementById("team-b");
+  if (!teamA || !teamB) return;
+
+  // Populate dropdowns with users
+  const users = await fetch(`https://api.sleeper.app/v1/league/${leagueId}/users`)
+    .then(r => r.json());
+  const options = users.map(u=>`<option value="${u.user_id}">${u.display_name}</option>`).join("");
+  teamA.innerHTML = options;
+  teamB.innerHTML = options;
+}
+
+// call these in your load sequence
+window.addEventListener("load", () => {
+  // … existing calls …
+  fetchTeams();
+  initAnalysis();
+});
+
+
 // 4. Events Feed (Firestore)
 async function loadEvents() {
   const el = document.getElementById("event-log");
