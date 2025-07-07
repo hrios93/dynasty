@@ -22,6 +22,7 @@
       <button id="theme-toggle" class="toggle-btn">🌓</button>
     </nav>
   </header>
+
   <main>
     <section id="standings-section">
       <h2>🏆 Standings & Upcoming</h2>
@@ -37,19 +38,29 @@
       <div id="standings-data">Loading...</div>
       <canvas id="trendChart" height="80"></canvas>
     </section>
-    <section id="waiver-section">
-      <h2>📥 Recent Waiver Activity</h2>
-      <div id="waiver-feed">Loading...</div>
-    </section>
+
     <section id="events-section">
-      <h2>📅 League Events</h2>
+      <h2>📅 League Events & Waiver Transactions</h2>
       <button class="toggle-btn" onclick="toggleSection('event-log')">Show/Hide</button>
       <div id="event-log" style="display:none;">Loading...</div>
     </section>
+
+    <section id="champions-section">
+      <h2>🏆 Past Champions</h2>
+      <div id="champion-gallery">
+        <ul>
+          <li><strong>2023:</strong> Team Alpha</li>
+          <li><strong>2022:</strong> Team Bravo</li>
+          <li><strong>2021:</strong> Team Charlie</li>
+        </ul>
+      </div>
+    </section>
   </main>
+
   <footer>
     <p>&copy; 2025 Dynasty League Manager</p>
   </footer>
+
   <script src="script.js"></script>
 </body>
 </html>
