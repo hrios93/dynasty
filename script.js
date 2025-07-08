@@ -231,91 +231,195 @@ async function loadEvents(){
 }
 
 // =======================================
-// === TEAMS PAGE LOGIC START (with fallback) ===
-let _rostersCurr = [], _statsMap = {}, _teamsUseFallback = false;
+// === TEAMS PAGE LOGIC START ===
 
-async function fetchTeams(){
-  const sel = document.getElementById("team-selector"),
-        cont= document.getElementById("team-pages");
-  if(!sel||!cont) return;
+/**
+ * Utility to turn a number into its ordinal (1→“1st”, 2→“2nd”, 3→“3rd”, 4→“4th”, etc.)
+ */
+function ordinal(n) {
+  const s=["th","st","nd","rd"],
+        v=n%100;
+  return n + (s[(v-20)%10]||s[v]||s[0]);
+}
 
-  // 1) Fetch current users, rosters, players
-  const [users, rostersCurr, players] = await Promise.all([
+async function fetchTeams() {
+  const sel  = document.getElementById("team-selector"),
+        cont = document.getElementById("team-pages");
+  if (!sel || !cont) return;
+
+  // 1) Load all needed data
+  const [users, rosters25, rosters24, rosters23, players] = await Promise.all([
     fetch(`https://api.sleeper.app/v1/league/${leagueId}/users`).then(r=>r.json()),
     fetch(`https://api.sleeper.app/v1/league/${leagueId}/rosters`).then(r=>r.json()),
+    fetch(`https://api.sleeper.app/v1/league/${fallbackLeagueId}/rosters`).then(r=>r.json()),
+    fetch(`https://api.sleeper.app/v1/league/918655311878270976/rosters`).then(r=>r.json()),
     fetch("https://api.sleeper.app/v1/players/nfl").then(r=>r.json())
   ]);
-  _rostersCurr = rostersCurr;
 
-  // 2) Determine if we need to fallback (all 0-0)
-  _teamsUseFallback = rostersCurr.every(r=>
-    (r.settings?.wins||0)+(r.settings?.losses||0)===0
+  // Map for quick user lookup
+  const userMap = Object.fromEntries(users.map(u=>[u.user_id, u]));
+
+  // 2) Build per-season ranking maps
+  const seasons = [
+    { year:2025, data:rosters25 },
+    { year:2024, data:rosters24 },
+    { year:2023, data:rosters23 }
+  ];
+  const seasonRankMaps = seasons.map(s => {
+    const sorted = [...s.data].sort((a,b)=>{
+      const aw=a.settings?.wins||0, bw=b.settings?.wins||0;
+      if(bw!==aw) return bw-aw;
+      return (b.settings?.fpts||0)-(a.settings?.fpts||0);
+    });
+    return Object.fromEntries(sorted.map((r,i)=>[r.owner_id,i+1]));
+  });
+
+  // 3) Aggregate “all-time” metrics
+  const metrics = {}; // owner_id → { winsSum, lossesSum, tiesSum, pfSum, paSum, gamesSum, avgPF, bestFinish, worstFinish }
+  users.forEach(u => {
+    metrics[u.user_id] = {
+      winsSum:0, lossesSum:0, tiesSum:0,
+      pfSum:0, paSum:0,
+      bestFinish: Infinity, worstFinish: 0
+    };
+  });
+  seasons.forEach((s, idx) => {
+    s.data.forEach(r => {
+      const m = metrics[r.owner_id];
+      const w = r.settings?.wins||0,
+            l = r.settings?.losses||0,
+            t = r.settings?.ties||0,
+            pf= r.settings?.fpts||0,
+            pa= r.settings?.fpts_against||0;
+      m.winsSum    += w;
+      m.lossesSum  += l;
+      m.tiesSum    += t;
+      m.pfSum      += pf;
+      m.paSum      += pa;
+      const rank = seasonRankMaps[idx][r.owner_id]||(seasons[idx].data.length);
+      m.bestFinish = Math.min(m.bestFinish, rank);
+      m.worstFinish= Math.max(m.worstFinish, rank);
+    });
+  });
+// finalize games & avgPF
+  Object.values(metrics).forEach(m => {
+    m.gamesSum = m.winsSum + m.lossesSum + m.tiesSum;
+    m.avgPF    = m.gamesSum ? m.pfSum / m.gamesSum : 0;
+  });
+
+  // 4) Compute rank‐maps for each metric
+  const ownerIds = users.map(u=>u.user_id);
+  const recordRankMap = Object.fromEntries(
+    [...ownerIds].sort((a,b)=>metrics[b].winsSum - metrics[a].winsSum)
+                  .map((id,i)=>[id,i+1])
   );
-  let rostersStats = rostersCurr;
-  if(_teamsUseFallback){
-    rostersStats = await fetch(`https://api.sleeper.app/v1/league/${fallbackLeagueId}/rosters`)
-                          .then(r=>r.json());
-  }
-  _statsMap = Object.fromEntries(rostersStats.map(r=>[r.owner_id,r]));
+  const pfRankMap = Object.fromEntries(
+    [...ownerIds].sort((a,b)=>metrics[b].pfSum - metrics[a].pfSum)
+                  .map((id,i)=>[id,i+1])
+  );
+  const paRankMap = Object.fromEntries(
+    [...ownerIds].sort((a,b)=>metrics[a].paSum - metrics[b].paSum)
+                  .map((id,i)=>[id,i+1])
+  );
+  const avgRankMap = Object.fromEntries(
+    [...ownerIds].sort((a,b)=>metrics[b].avgPF - metrics[a].avgPF)
+                  .map((id,i)=>[id,i+1])
+  );
+  const bestFinishRankMap = Object.fromEntries(
+    [...ownerIds].sort((a,b)=>metrics[a].bestFinish - metrics[b].bestFinish)
+                  .map((id,i)=>[id,i+1])
+  );
+  const worstFinishRankMap = Object.fromEntries(
+    [...ownerIds].sort((a,b)=>metrics[b].worstFinish - metrics[a].worstFinish)
+                  .map((id,i)=>[id,i+1])
+  );
 
-  // 3) Build selector
-  const userMap = Object.fromEntries(users.map(u=>[u.user_id,u]));
+  // 5) Render selector (avatar + name)
   users.sort((a,b)=>a.display_name.localeCompare(b.display_name));
   sel.innerHTML = users.map(u=>{
-    const r = rostersCurr.find(x=>x.owner_id===u.user_id) || {};
+    const r = rosters25.find(x=>x.owner_id===u.user_id) || {};
     const avatar = u.avatar
-      ? `<img class="avatar" src="https://sleepercdn.com/avatars/thumbs/${u.avatar}" alt="">`
+      ? `<img class="avatar" src="https://sleepercdn.com/avatars/thumbs/${u.avatar}">`
       : `<div class="avatar"></div>`;
-    const name   = r.metadata?.team_name||u.display_name;
+    const name = r.metadata?.team_name || u.display_name;
     return `<div class="team-tab" data-user="${u.user_id}">
       ${avatar}<div class="tab-label">${name}</div>
     </div>`;
   }).join("");
 
-  // 4) Hook tabs
+  // 6) Wire up clicks
   const tabs = sel.querySelectorAll(".team-tab");
   tabs.forEach(tab=>{
     tab.onclick = ()=>{
       tabs.forEach(t=>t.classList.remove("active"));
       tab.classList.add("active");
-      renderTeamPage(tab.dataset.user, userMap, players);
+      renderTeamPage(tab.dataset.user, userMap, players,
+                     metrics, {
+                       record: recordRankMap,
+                       pf: pfRankMap,
+                       pa: paRankMap,
+                       avg: avgRankMap,
+                       best: bestFinishRankMap,
+                       worst: worstFinishRankMap
+                     });
     };
   });
   if(tabs[0]) tabs[0].click();
 }
 
-function renderTeamPage(userId, userMap, players){
-  const cont = document.getElementById("team-pages");
-  const r    = _rostersCurr.find(x=>x.owner_id===userId);
-  if(!r) return void(cont.innerHTML="<p>No roster found.</p>");
+function renderTeamPage(userId, userMap, players, metrics, ranks){
+  const cont = document.getElementById("team-pages"),
+        m    = metrics[userId];
+  if(!m) return cont.innerHTML="<p>No data.</p>";
 
-  // Stats from either current or fallback
-  const statsR = _statsMap[userId] || r;
-  const w  = statsR.settings?.wins||0;
-  const l  = statsR.settings?.losses||0;
-  const t  = statsR.settings?.ties||0;
-  const pf = (statsR.settings?.fpts||0).toFixed(1);
-  const pa = (statsR.settings?.fpts_against||0).toFixed(1);
+  // Build the All-Time Snapshot
+  const snapshotHTML = `
+    <div class="team-alltime">
+      <h3>All-Time Snapshot</h3>
+      <ul>
+        <li>Record: ${m.winsSum}-${m.lossesSum}-${m.tiesSum}
+            (${ordinal(ranks.record[userId])})</li>
+        <li>Total PF: ${m.pfSum.toFixed(1)}
+            (${ordinal(ranks.pf[userId])})</li>
+        <li>Total PA: ${m.paSum.toFixed(1)}
+            (${ordinal(ranks.pa[userId])})</li>
+        <li>Avg PF/Game: ${m.avgPF.toFixed(1)}
+            (${ordinal(ranks.avg[userId])})</li>
+        <li>Best Finish: ${m.bestFinish}
+            (${ordinal(ranks.best[userId])})</li>
+        <li>Worst Finish: ${m.worstFinish}
+            (${ordinal(ranks.worst[userId])})</li>
+        <li>Championships Won: <!-- manual count needed --> 0 (—)</li>
+        <li>Waiver Pickups: <!-- placeholder --> 0 (—)</li>
+        <li>Trades Executed: <!-- placeholder --> 0 (—)</li>
+        <li>Playoff Appearances: <!-- placeholder --> 0 (—)</li>
+        <li>Playoff Record: <!-- placeholder --> 0-0 (—)</li>
+      </ul>
+    </div>`;
 
-  const header = _teamsUseFallback
-    ? `<p><em>Showing 2024 record</em></p>`
-    : "";
+  // Then your existing stats + roster…
+  const statsR = _rostersCurr.find(r=>r.owner_id===userId),
+        w = statsR.settings?.wins||0,
+        l = statsR.settings?.losses||0,
+        t = statsR.settings?.ties||0,
+        pf= (statsR.settings?.fpts||0).toFixed(1),
+        pa= (statsR.settings?.fpts_against||0).toFixed(1);
 
-  const statsHtml = `
+  const statsHTML = `
     <div class="team-stats">
-      ${header}
       <p><strong>${userMap[userId].display_name}</strong></p>
       <p>Record: ${w}-${l}-${t}</p>
       <p>For / Agst: ${pf} / ${pa}</p>
     </div>`;
 
-  // Roster grouping
+  // Roster grouping (as before)…
   const groups = {};
-  r.players.forEach(pid=>{
-    const p = players[pid]||{full_name:pid,position:"UNK"};
-    (groups[p.position]=groups[p.position]||[]).push(p.full_name);
-  });
-  const order = ["QB","RB","WR","TE","FLEX","DST","K","BENCH","TAXI"];
+  _rostersCurr.find(r=>r.owner_id===userId).players
+    .forEach(pid=>{
+      const p = players[pid]||{full_name:pid,position:"UNK"};
+      (groups[p.position]=groups[p.position]||[]).push(p.full_name);
+    });
+  const order=["QB","RB","WR","TE","FLEX","DST","K","BENCH","TAXI"];
   const rosterHtml = order.map(pos=>{
     if(!groups[pos]) return "";
     return `<div class="position-group">
@@ -324,18 +428,15 @@ function renderTeamPage(userId, userMap, players){
     </div>`;
   }).join("");
 
-  cont.innerHTML = statsHtml + rosterHtml;
+  cont.innerHTML = snapshotHTML + statsHTML + rosterHtml;
 }
 
-// Initialize
+// Initialize on load
 window.addEventListener("load", ()=>{
   if(document.getElementById("team-selector")) fetchTeams();
-  fetchLeagueInfo();
-  fetchStandings();
-  loadEvents();
 });
-// === TEAMS PAGE LOGIC END ===
 
+// === TEAMS PAGE LOGIC END ===
 
 /* =======================================
    STUBS FOR RULES, POLLS, ANALYSIS PAGES
