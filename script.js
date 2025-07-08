@@ -184,6 +184,8 @@ async function fetchStandings() {
       </tr></thead>
       <tbody>${rows}</tbody>
     </table>`;
+console.log("[DEBUG] fetchStandings() completed render");
+
 }
 const sortEl = document.getElementById('standings-sort');
 if (sortEl) sortEl.addEventListener('change', fetchStandings);
