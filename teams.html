@@ -1,17 +1,24 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <!-- =======================================
+       TEAMS PAGE: Head
+       ======================================= -->
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>🧑‍🤝‍🧑 Team Pages</title>
+  <title>🧑‍🤝‍🧑 Dynasty League — Teams</title>
   <link rel="stylesheet" href="style.css"/>
+  <!-- Firebase SDKs (needed for script.js) -->
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 </head>
 <body>
+  <!-- =======================================
+       HEADER & NAVIGATION
+       ======================================= -->
   <header>
-    <h1>Team Pages</h1>
+    <h1>Dynasty League — Teams</h1>
     <nav id="top-nav">
       <a href="index.html">Home</a>
       <a href="teams.html">Teams</a>
@@ -20,16 +27,33 @@
       <button id="theme-toggle" class="toggle-btn">🌓</button>
     </nav>
   </header>
+
+  <!-- =======================================
+       MAIN TEAMS CONTENT
+       ======================================= -->
   <main>
-    <section>
+    <!-- Team Selector Carousel -->
+    <section id="team-selector-section">
       <h2>Select a Team</h2>
-      <div id="team-selector" class="team-grid">Loading teams...</div>
+      <div id="team-selector" class="team-grid">
+        Loading teams…
+      </div>
     </section>
-    <section id="team-pages">Loading team info...</section>
+
+    <!-- Team Detail Pane -->
+    <section id="team-pages">
+      Loading team info…
+    </section>
   </main>
+
+  <!-- =======================================
+       FOOTER
+       ======================================= -->
   <footer>
     <p>&copy; 2025 Dynasty League Manager</p>
   </footer>
+
+  <!-- Page Logic -->
   <script src="script.js"></script>
 </body>
 </html>
