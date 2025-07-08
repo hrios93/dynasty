@@ -27,7 +27,10 @@ auth.onAuthStateChanged(user => {
     logoutBtn.style.display = user ? "inline"  : "none";
     userInfo.innerText      = user ? `Hello, ${user.displayName}` : "";
   }
-  loadRules(); loadPolls(); loadEvents();
+  // Safe calls: these may be page‐specific
+  if (typeof loadRules   === 'function') loadRules();
+  if (typeof loadPolls   === 'function') loadPolls();
+  if (typeof loadEvents  === 'function') loadEvents();
 });
 window.startLogin = startLogin;
 window.logout     = logout;
@@ -56,6 +59,12 @@ function toggleSection(id) {
 window.toggleSection = toggleSection;
 
 // ——————————————————————————————————
+// Safe Stub for Rules & Polls Loaders
+// ——————————————————————————————————
+async function loadRules() { /* stub for pages without rules */ }
+function loadPolls()   { /* stub for pages without polls */ }
+
+// ——————————————————————————————————
 // Constants & League IDs
 // ——————————————————————————————————
 const leagueId         = "1180208789911158784";
@@ -76,97 +85,93 @@ async function fetchLeagueInfo() {
 }
 
 // ——————————————————————————————————
-// 2. Fetch Standings & Upcoming with Sorting & Fallback + Debug
+// 2. Fetch Standings & Upcoming with Sorting & Fallback
 // ——————————————————————————————————
 async function fetchStandings() {
   console.log("[DEBUG] fetchStandings() called");
   const el = document.getElementById("standings-data");
-  if (!el) {
-    console.log("[DEBUG] #standings-data element not found");
-    return;
-  }
-  try {
-    let lid = leagueId;
-    let [rs, us] = await Promise.all([
+  if (!el) return console.log("[DEBUG] #standings-data element not found");
+
+  // Always fetch current waiver positions
+  let currentRosters = await fetch(`https://api.sleeper.app/v1/league/${leagueId}/rosters`).then(r=>r.json());
+  const waiverMap = Object.fromEntries(
+    currentRosters.map(r => [r.owner_id, r.settings?.waiver_position||0])
+  );
+
+  // Now fetch stats; fallback if needed
+  let lid = leagueId;
+  let [rs, us] = await Promise.all([
+    fetch(`https://api.sleeper.app/v1/league/${lid}/rosters`).then(r=>r.json()),
+    fetch(`https://api.sleeper.app/v1/league/${lid}/users`).then(r=>r.json())
+  ]);
+  if (rs.every(r=> (r.settings?.wins||0)+(r.settings?.losses||0) === 0)) {
+    console.log("[DEBUG] No games yet; switching to fallback season");
+    lid = fallbackLeagueId;
+    [rs, us] = await Promise.all([
       fetch(`https://api.sleeper.app/v1/league/${lid}/rosters`).then(r=>r.json()),
       fetch(`https://api.sleeper.app/v1/league/${lid}/users`).then(r=>r.json())
     ]);
-    // fallback to last season if no games played
-    if (rs.every(r=> (r.settings?.wins||0)+(r.settings?.losses||0) === 0)) {
-      console.log("[DEBUG] No games yet; switching to fallback season");
-      lid = fallbackLeagueId;
-      [rs, us] = await Promise.all([
-        fetch(`https://api.sleeper.app/v1/league/${lid}/rosters`).then(r=>r.json()),
-        fetch(`https://api.sleeper.app/v1/league/${lid}/users`).then(r=>r.json())
-      ]);
-    }
-    const userMap = Object.fromEntries(us.map(u=>[u.user_id, u.display_name]));
-    // compute power & maxPF
-    rs.forEach(r=>{
-      r.power = (r.settings?.fpts||0) + (r.settings?.wins||0)*20;
-      r.maxPF = r.settings?.fpts_max || 0;
-    });
-    // sort logic
-    const sortBy = document.getElementById('standings-sort')?.value || 'rank';
-    console.log("[DEBUG] Sorting by:", sortBy);
-    rs.sort((a,b)=>{
-      switch(sortBy) {
-        case 'pf':    return (b.settings?.fpts||0) - (a.settings?.fpts||0);
-        case 'pa':    return (a.settings?.fpts_against||0) - (b.settings?.fpts_against||0);
-        case 'maxpf': return b.maxPF - a.maxPF;
-        case 'waiver':return (a.settings?.waiver_position||0) - (b.settings?.waiver_position||0);
-        case 'power': return b.power - a.power;
-        default:      return ((b.settings?.wins||0) - (a.settings?.wins||0)) || ((b.settings?.fpts||0) - (a.settings?.fpts||0));
-      }
-    });
-    // render rows
-    let rows = '';
-    rs.forEach((r,i)=>{
-      const owner    = r.metadata?.team_name || userMap[r.owner_id] || 'Unknown';
-      const w        = r.settings?.wins||0;
-      const l        = r.settings?.losses||0;
-      const pf       = r.settings?.fpts||0;
-      const pa       = r.settings?.fpts_against||0;
-      const maxPF    = r.maxPF;
-      const power    = r.power;
-      const waiver   = r.settings?.waiver_position || i+1;
-      rows += `<tr>
-        <td>${i+1}</td>
-        <td><a href="teams.html#${r.owner_id}">${owner}</a></td>
-        <td>${w}-${l}</td>
-        <td>${pf.toFixed(1)}</td>
-        <td>${pa.toFixed(1)}</td>
-        <td>${maxPF.toFixed(1)}</td>
-        <td>${power.toFixed(1)}</td>
-        <td>${waiver}</td>
-        <td>—</td>
-        <td>—</td>
-      </tr>`;
-    });
-    el.innerHTML = `
-      <table>
-        <thead>
-          <tr>
-            <th>Standings</th>
-            <th>Team</th>
-            <th>W-L</th>
-            <th>PF</th>
-            <th>PA</th>
-            <th>Max PF</th>
-            <th>Power Score</th>
-            <th>Waiver</th>
-            <th>Last</th>
-            <th>Next</th>
-          </tr>
-        </thead>
-        <tbody>${rows}</tbody>
-      </table>`;
-  } catch(e) {
-    console.error("Standings Error:", e);
   }
+
+  const userMap = Object.fromEntries(us.map(u=>[u.user_id, u.display_name]));
+  rs.forEach(r=>{
+    r.power  = (r.settings?.fpts||0) + (r.settings?.wins||0)*20;
+    r.maxPF  = r.settings?.fpts_max || 0;
+    r.waiver = waiverMap[r.owner_id] || (r.settings?.waiver_position||0);
+  });
+
+  const sortBy = document.getElementById('standings-sort')?.value || 'rank';
+  console.log("[DEBUG] Sorting by:", sortBy);
+  rs.sort((a,b)=>{
+    switch(sortBy) {
+      case 'pf':    return (b.settings?.fpts||0) - (a.settings?.fpts||0);
+      case 'pa':    return (a.settings?.fpts_against||0) - (b.settings?.fpts_against||0);
+      case 'maxpf': return b.maxPF - a.maxPF;
+      case 'power': return b.power - a.power;
+      case 'waiver':return a.waiver - b.waiver;
+      default:      return ((b.settings?.wins||0) - (a.settings?.wins||0)) || ((b.settings?.fpts||0) - (a.settings?.fpts||0));
+    }
+  });
+
+  let rows = '';
+  rs.forEach((r,i)=>{
+    const owner = r.metadata?.team_name || userMap[r.owner_id] || 'Unknown';
+    rows += `<tr>
+      <td>${i+1}</td>
+      <td><a href="teams.html#${r.owner_id}">${owner}</a></td>
+      <td>${r.settings?.wins||0}-${r.settings?.losses||0}</td>
+      <td>${(r.settings?.fpts||0).toFixed(1)}</td>
+      <td>${(r.settings?.fpts_against||0).toFixed(1)}</td>
+      <td>${r.maxPF.toFixed(1)}</td>
+      <td>${r.power.toFixed(1)}</td>
+      <td>${r.waiver}</td>
+      <td>—</td>
+      <td>—</td>
+    </tr>`;
+  });
+
+  el.innerHTML = `
+    <table>
+      <thead>
+        <tr>
+          <th>Standings</th>
+          <th>Team</th>
+          <th>W-L</th>
+          <th>PF</th>
+          <th>PA</th>
+          <th>Max PF</th>
+          <th>Power Score</th>
+          <th>Waiver</th>
+          <th>Last</th>
+          <th>Next</th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>`;
 }
 // re-fetch on sort change
-document.getElementById('standings-sort')?.addEventListener('change', fetchStandings);
+const sortEl = document.getElementById('standings-sort');
+if (sortEl) sortEl.addEventListener('change', fetchStandings);
 
 // ——————————————————————————————————
 // 3. Combined Waiver + Events Feed
@@ -182,7 +187,7 @@ async function loadEvents() {
     type: d.data().type
   }));
   // waiver txns
-  const tx = await fetch(`https://api.sleeper.app/v1/league/${leagueId}/transactions/1`).then(r=>r.json());
+  const tx    = await fetch(`https://api.sleeper.app/v1/league/${leagueId}/transactions/1`).then(r=>r.json());
   const [rosters, users, players] = await Promise.all([
     fetch(`https://api.sleeper.app/v1/league/${leagueId}/rosters`).then(r=>r.json()),
     fetch(`https://api.sleeper.app/v1/league/${leagueId}/users`).then(r=>r.json()),
@@ -190,16 +195,16 @@ async function loadEvents() {
   ]);
   const rosterMap = Object.fromEntries(rosters.map(r=>[r.roster_id,r.owner_id]));
   const userMap   = Object.fromEntries(users.map(u=>[u.user_id,u.display_name]));
-  const waiverEvents = tx.filter(t=>t.type==='waiver').flatMap(t=>{
+  const waiverEvents = [];
+  tx.forEach(t=>{
+    if (t.type !== 'waiver') return;
     const ts = new Date(t.created*1000);
-    return [
-      ...Object.entries(t.adds).map(([pid, rid]) => ({
-        ts, user: userMap[rosterMap[rid]]||'Unknown', desc: `📥 ${players[pid]?.full_name||pid}`, type:'Waiver'
-      })),
-      ...Object.entries(t.drops).map(([pid, rid]) => ({
-        ts, user: userMap[rosterMap[rid]]||'Unknown', desc: `❌ ${players[pid]?.full_name||pid}`, type:'Waiver'
-      }))
-    ];
+    if (t.adds) Object.entries(t.adds).forEach(([pid,rid]) => {
+      waiverEvents.push({ ts, user: userMap[rosterMap[rid]]||'Unknown', desc: `📥 ${players[pid]?.full_name||pid}`, type: 'Waiver' });
+    });
+    if (t.drops) Object.entries(t.drops).forEach(([pid,rid]) => {
+      waiverEvents.push({ ts, user: userMap[rosterMap[rid]]||'Unknown', desc: `❌ ${players[pid]?.full_name||pid}`, type: 'Waiver' });
+    });
   });
   // merge & sort
   const merged = [...fsEvents, ...waiverEvents].sort((a,b)=>b.ts - a.ts).slice(0,20);
@@ -222,6 +227,6 @@ async function loadEvents() {
 window.addEventListener('load', () => {
   fetchLeagueInfo();
   fetchStandings();
-  loadEvents();
-  // other page-specific calls...
+  if (typeof loadEvents === 'function') loadEvents();
+  // ... additional page-specific init calls ...
 });
