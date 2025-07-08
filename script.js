@@ -256,19 +256,27 @@ async function fetchTeams(){
     fetch(`https://api.sleeper.app/v1/league/${leagueId}/rosters`).then(r=>r.json()),
     fetch("https://api.sleeper.app/v1/players/nfl").then(r=>r.json())
   ]);
+
+  // Map users by ID
   const userMap = Object.fromEntries(users.map(u=>[u.user_id,u]));
 
-  users.sort((a,b)=>a.display_name.localeCompare(b.display_name));
+  // Sort alphabetically
+  users.sort((a,b)=> a.display_name.localeCompare(b.display_name));
 
+  // Build selector HTML
   sel.innerHTML = users.map(u=>{
-    const r = rosters.find(r=>r.owner_id===u.user_id) || {};
+    const roster = rosters.find(r=>r.owner_id===u.user_id) || {};
     const avatar = u.avatar
-      ? `<img class="avatar" src="https://sleepercdn.com/avatars/thumbs/${u.avatar}">`
+      ? `<img class="avatar" src="https://sleepercdn.com/avatars/thumbs/${u.avatar}" alt="">`
       : `<div class="avatar"></div>`;
-    const name = r.metadata?.team_name || u.display_name;
-    return `<div class="team-tab" data-user="${u.user_id}">${avatar}<div>${name}</div></div>`;
+    const name = roster.metadata?.team_name || u.display_name;
+    return `<div class="team-tab" data-user="${u.user_id}">
+      ${avatar}
+      <div class="tab-label">${name}</div>
+    </div>`;
   }).join("");
 
+  // Tab click handler
   const tabs = sel.querySelectorAll(".team-tab");
   tabs.forEach(tab=>{
     tab.onclick = ()=>{
@@ -277,37 +285,57 @@ async function fetchTeams(){
       renderTeamPage(tab.dataset.user, rosters, userMap, players);
     };
   });
+
+  // Auto-select first
   if(tabs[0]) tabs[0].click();
 }
+
 function renderTeamPage(userId, rosters, userMap, players){
   const cont = document.getElementById("team-pages");
   const r = rosters.find(r=>r.owner_id===userId);
-  if(!r){ cont.innerHTML="<p>No roster.</p>"; return; }
+  if(!r){
+    cont.innerHTML = "<p>No roster for this team.</p>";
+    return;
+  }
 
+  // Safely default any missing settings
+  const w  = r.settings?.wins || 0;
+  const l  = r.settings?.losses || 0;
+  const t  = r.settings?.ties || 0;
+  const pf = (r.settings?.fpts || 0).toFixed(1);
+  const pa = (r.settings?.fpts_against || 0).toFixed(1);
+
+  // Stats snapshot
   const stats = `
     <div class="team-stats">
       <p><strong>${userMap[userId].display_name}</strong></p>
-      <p>Record: ${r.settings.wins}-${r.settings.losses}-${r.settings.ties||0}</p>
-      <p>For/Agst: ${r.settings.fpts.toFixed(1)}/${r.settings.fpts_against.toFixed(1)}</p>
+      <p>Record: ${w}-${l}-${t}</p>
+      <p>For / Agst: ${pf} / ${pa}</p>
     </div>`;
 
+  // Group players by position
   const groups = {};
   r.players.forEach(pid=>{
-    const p = players[pid] || {full_name:pid,position:"UNK"};
+    const p = players[pid] || { full_name: pid, position: "UNK" };
     (groups[p.position] = groups[p.position]||[]).push(p.full_name);
   });
   const order = ["QB","RB","WR","TE","FLEX","DST","K","BENCH","TAXI"];
   const rosterHtml = order.map(pos=>{
     if(!groups[pos]) return "";
-    return `<div class="position-group"><h3>${pos}</h3><ul>${
-      groups[pos].map(n=>`<li>${n}</li>`).join("")
-    }</ul></div>`;
+    return `<div class="position-group">
+      <h3>${pos}</h3>
+      <ul>${groups[pos].map(n=>`<li>${n}</li>`).join("")}</ul>
+    </div>`;
   }).join("");
 
   cont.innerHTML = stats + rosterHtml;
 }
+
+// Initialize Teams on load
 window.addEventListener("load", ()=>{
-  if(document.getElementById("team-selector")) fetchTeams();
+  if(document.getElementById("team-selector")){
+    fetchTeams();
+  }
 });
 // === TEAMS PAGE LOGIC END ===
 
