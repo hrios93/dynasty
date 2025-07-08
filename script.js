@@ -73,88 +73,90 @@ async function fetchStandings() {
   const el = document.getElementById("standings-data");
   if (!el) return;
 
-  // 1) Load rosters, users, and players
-  let [rosters, users, players] = await Promise.all([
-    fetch(`https://api.sleeper.app/v1/league/${leagueId}/rosters`).then(r => r.json()),
-    fetch(`https://api.sleeper.app/v1/league/${leagueId}/users`).then(r => r.json()),
-    fetch("https://api.sleeper.app/v1/players/nfl").then(r => r.json())
-  ]);
+  try {
+    // 1) Fetch *current* rosters + users + players
+    const [currentRs, users, players] = await Promise.all([
+      fetch(`https://api.sleeper.app/v1/league/${leagueId}/rosters`).then(r=>r.json()),
+      fetch(`https://api.sleeper.app/v1/league/${leagueId}/users`).then(r=>r.json()),
+      fetch("https://api.sleeper.app/v1/players/nfl").then(r=>r.json())
+    ]);
 
-  // 2) If nobody has played, fall back to last season’s rosters
-  const allZero = rosters.every(r =>
-    (r.settings?.wins || 0) + (r.settings?.losses || 0) === 0
-  );
-  if (allZero) {
-    rosters = await fetch(`https://api.sleeper.app/v1/league/${fallbackLeagueId}/rosters`)
-                      .then(r => r.json());
-  }
+    // 2) Build waiver map from *current* season only
+    const waiverMap = Object.fromEntries(
+      currentRs.map(r => [r.owner_id, r.settings?.waiver_position || 0])
+    );
 
-  // 3) Build helper maps
-  const userMap = Object.fromEntries(users.map(u => [u.user_id, u.display_name]));
+    // 3) Decide whether to fallback for W-L & PF stats
+    let rs = currentRs;
+    const allZero = rs.every(r =>
+      (r.settings?.wins || 0) + (r.settings?.losses || 0) === 0
+    );
+    if (allZero) {
+      rs = await fetch(`https://api.sleeper.app/v1/league/${fallbackLeagueId}/rosters`)
+                  .then(r=>r.json());
+    }
 
-  // 4) Compute additional metrics on each roster
-  rosters.forEach(r => {
-    r.power  = (r.settings?.fpts || 0) + (r.settings?.wins || 0) * 20;
-    r.maxPF  = r.settings?.fpts_max || 0;
-    r.waiver = r.settings?.waiver_position || 0;
-  });
+    // 4) Map user IDs → display names
+    const userMap = Object.fromEntries(users.map(u => [u.user_id, u.display_name]));
 
-  // 5) Sort by wins → points for
-  rosters.sort((a, b) => {
-    const aw = a.settings?.wins || 0, bw = b.settings?.wins || 0;
-    if (bw !== aw) return bw - aw;
-    return (b.settings?.fpts || 0) - (a.settings?.fpts || 0);
-  });
+    // 5) Compute additional metrics on each roster
+    rs.forEach(r => {
+      r.power  = (r.settings?.fpts || 0) + (r.settings?.wins || 0) * 20;
+      r.maxPF  = r.settings?.fpts_max || 0;
+      // waiver will always come from current season
+      r.waiver = waiverMap[r.owner_id] || 0;
+    });
 
-  // 6) Render the table
-  const rows = rosters.map((r, i) => {
-    const w = r.settings?.wins || 0,
-          l = r.settings?.losses || 0,
-          pf = (r.settings?.fpts || 0).toFixed(1),
-          pa = (r.settings?.fpts_against || 0).toFixed(1),
-          mp = r.maxPF.toFixed(1),
-          ps = r.power.toFixed(1),
-          wv = r.waiver;
-    return `
-      <tr>
-        <td>${i+1}</td>
-        <td>${userMap[r.owner_id] || "Unknown"}</td>
-        <td>${w}-${l}</td>
-        <td>${pf}</td>
-        <td>${pa}</td>
-        <td>${mp}</td>
-        <td>${ps}</td>
-        <td>${wv}</td>
-        <td>—</td>
-        <td>—</td>
-      </tr>
-    `;
-  }).join("");
+    // 6) Sort by wins → points for
+    rs.sort((a, b) => {
+      const aw = a.settings?.wins || 0, bw = b.settings?.wins || 0;
+      if (bw !== aw) return bw - aw;
+      return (b.settings?.fpts || 0) - (a.settings?.fpts || 0);
+    });
 
-  el.innerHTML = `
-    <table>
-      <thead>
+    // 7) Render table with all columns
+    const rows = rs.map((r,i) => {
+      const w  = r.settings?.wins || 0,
+            l  = r.settings?.losses || 0,
+            pf = (r.settings?.fpts || 0).toFixed(1),
+            pa = (r.settings?.fpts_against || 0).toFixed(1),
+            mp = r.maxPF.toFixed(1),
+            ps = r.power.toFixed(1),
+            wv = r.waiver;
+      return `
         <tr>
-          <th>Standings</th>
-          <th>Team</th>
-          <th>W-L</th>
-          <th>PF</th>
-          <th>PA</th>
-          <th>Max PF</th>
-          <th>Power Score</th>
-          <th>Waiver</th>
-          <th>Last</th>
-          <th>Next</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${rows}
-      </tbody>
-    </table>
-  `;
+          <td>${i+1}</td>
+          <td>${userMap[r.owner_id]||"Unknown"}</td>
+          <td>${w}-${l}</td>
+          <td>${pf}</td>
+          <td>${pa}</td>
+          <td>${mp}</td>
+          <td>${ps}</td>
+          <td>${wv}</td>
+          <td>—</td>
+          <td>—</td>
+        </tr>`;
+    }).join("");
+
+    el.innerHTML = `
+      <table>
+        <thead>
+          <tr>
+            <th>Standings</th><th>Team</th><th>W-L</th>
+            <th>PF</th><th>PA</th><th>Max PF</th>
+            <th>Power Score</th><th>Waiver</th>
+            <th>Last</th><th>Next</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows}
+        </tbody>
+      </table>`;
+
+  } catch (e) {
+    console.error("Standings Error:", e);
+  }
 }
-
-
 // 3) Unified Events Feed
 async function loadEvents() {
   const container = document.getElementById("event-log");
