@@ -72,45 +72,88 @@ async function fetchLeagueInfo() {
 async function fetchStandings() {
   const el = document.getElementById("standings-data");
   if (!el) return;
-  try {
-    const [rosters, users] = await Promise.all([
-      fetch(`https://api.sleeper.app/v1/league/${leagueId}/rosters`).then(r => r.json()),
-      fetch(`https://api.sleeper.app/v1/league/${leagueId}/users`).then(r => r.json())
-    ]);
-    const userMap = Object.fromEntries(users.map(u => [u.user_id, u.display_name]));
 
-    // Sort by wins, then points
-    rosters.sort((a,b) => {
-      const aw = a.settings?.wins||0, bw = b.settings?.wins||0;
-      if (bw !== aw) return bw - aw;
-      const af = a.settings?.fpts||0, bf = b.settings?.fpts||0;
-      return bf - af;
-    });
+  // 1) Load rosters, users, and players
+  let [rosters, users, players] = await Promise.all([
+    fetch(`https://api.sleeper.app/v1/league/${leagueId}/rosters`).then(r => r.json()),
+    fetch(`https://api.sleeper.app/v1/league/${leagueId}/users`).then(r => r.json()),
+    fetch("https://api.sleeper.app/v1/players/nfl").then(r => r.json())
+  ]);
 
-    const rows = rosters.map((r,i) => `
+  // 2) If nobody has played, fall back to last season’s rosters
+  const allZero = rosters.every(r =>
+    (r.settings?.wins || 0) + (r.settings?.losses || 0) === 0
+  );
+  if (allZero) {
+    rosters = await fetch(`https://api.sleeper.app/v1/league/${fallbackLeagueId}/rosters`)
+                      .then(r => r.json());
+  }
+
+  // 3) Build helper maps
+  const userMap = Object.fromEntries(users.map(u => [u.user_id, u.display_name]));
+
+  // 4) Compute additional metrics on each roster
+  rosters.forEach(r => {
+    r.power  = (r.settings?.fpts || 0) + (r.settings?.wins || 0) * 20;
+    r.maxPF  = r.settings?.fpts_max || 0;
+    r.waiver = r.settings?.waiver_position || 0;
+  });
+
+  // 5) Sort by wins → points for
+  rosters.sort((a, b) => {
+    const aw = a.settings?.wins || 0, bw = b.settings?.wins || 0;
+    if (bw !== aw) return bw - aw;
+    return (b.settings?.fpts || 0) - (a.settings?.fpts || 0);
+  });
+
+  // 6) Render the table
+  const rows = rosters.map((r, i) => {
+    const w = r.settings?.wins || 0,
+          l = r.settings?.losses || 0,
+          pf = (r.settings?.fpts || 0).toFixed(1),
+          pa = (r.settings?.fpts_against || 0).toFixed(1),
+          mp = r.maxPF.toFixed(1),
+          ps = r.power.toFixed(1),
+          wv = r.waiver;
+    return `
       <tr>
         <td>${i+1}</td>
         <td>${userMap[r.owner_id] || "Unknown"}</td>
-        <td>${r.settings?.wins||0}-${r.settings?.losses||0}</td>
-        <td>${(r.settings?.fpts||0).toFixed(1)}</td>
+        <td>${w}-${l}</td>
+        <td>${pf}</td>
+        <td>${pa}</td>
+        <td>${mp}</td>
+        <td>${ps}</td>
+        <td>${wv}</td>
+        <td>—</td>
+        <td>—</td>
       </tr>
-    `).join("");
+    `;
+  }).join("");
 
-    el.innerHTML = `
-      <table>
-        <thead>
-          <tr>
-            <th>Rank</th><th>Team</th><th>W–L</th><th>PF</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${rows}
-        </tbody>
-      </table>`;
-  } catch (e) {
-    console.error("Standings Error:", e);
-  }
+  el.innerHTML = `
+    <table>
+      <thead>
+        <tr>
+          <th>Standings</th>
+          <th>Team</th>
+          <th>W-L</th>
+          <th>PF</th>
+          <th>PA</th>
+          <th>Max PF</th>
+          <th>Power Score</th>
+          <th>Waiver</th>
+          <th>Last</th>
+          <th>Next</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows}
+      </tbody>
+    </table>
+  `;
 }
+
 
 // 3) Unified Events Feed
 async function loadEvents() {
