@@ -27,7 +27,6 @@ auth.onAuthStateChanged(user => {
     logoutBtn.style.display = user ? "inline"  : "none";
     userInfo.innerText      = user ? `Hello, ${user.displayName}` : "";
   }
-  // Safe calls: these may be page‐specific
   if (typeof loadRules   === 'function') loadRules();
   if (typeof loadPolls   === 'function') loadPolls();
   if (typeof loadEvents  === 'function') loadEvents();
@@ -61,8 +60,8 @@ window.toggleSection = toggleSection;
 // ——————————————————————————————————
 // Safe Stub for Rules & Polls Loaders
 // ——————————————————————————————————
-async function loadRules() { /* stub for pages without rules */ }
-function loadPolls()   { /* stub for pages without polls */ }
+async function loadRules() { /* stub */ }
+function loadPolls()   { /* stub */ }
 
 // ——————————————————————————————————
 // Constants & League IDs
@@ -89,22 +88,24 @@ async function fetchLeagueInfo() {
 // ——————————————————————————————————
 async function fetchStandings() {
   console.log("[DEBUG] fetchStandings() called");
-  const el = document.getElementById("standings-data");
-  if (!el) return console.log("[DEBUG] #standings-data element not found");
+  const el = document.getElementById("standings-data"); if(!el) return console.log("[DEBUG] #standings-data element not found");
 
-  // Always fetch current waiver positions
-  let currentRosters = await fetch(`https://api.sleeper.app/v1/league/${leagueId}/rosters`).then(r=>r.json());
-  const waiverMap = Object.fromEntries(
-    currentRosters.map(r => [r.owner_id, r.settings?.waiver_position||0])
-  );
+  // current waiver positions always live
+  const currentRosters = await fetch(`https://api.sleeper.app/v1/league/${leagueId}/rosters`).then(r=>r.json());
+  const waiverMap = Object.fromEntries(currentRosters.map(r=>[r.owner_id, r.settings?.waiver_position||0]));
 
-  // Now fetch stats; fallback if needed
+  // fetch team metadata from Sleeper
+  const metaRes = await fetch(`https://api.sleeper.app/v1/league/${leagueId}/metadata`);
+  const meta   = await metaRes.json();
+  const teamMetaMap = Object.fromEntries((meta.teams||[]).map(t=>[t.roster_id, t.name]));
+
+  // fetch stats, fallback if no games
   let lid = leagueId;
   let [rs, us] = await Promise.all([
     fetch(`https://api.sleeper.app/v1/league/${lid}/rosters`).then(r=>r.json()),
     fetch(`https://api.sleeper.app/v1/league/${lid}/users`).then(r=>r.json())
   ]);
-  if (rs.every(r=> (r.settings?.wins||0)+(r.settings?.losses||0) === 0)) {
+  if(rs.every(r=> (r.settings?.wins||0)+(r.settings?.losses||0) ===0)){
     console.log("[DEBUG] No games yet; switching to fallback season");
     lid = fallbackLeagueId;
     [rs, us] = await Promise.all([
@@ -114,62 +115,76 @@ async function fetchStandings() {
   }
 
   const userMap = Object.fromEntries(us.map(u=>[u.user_id, u.display_name]));
+  const rosterToOwner = Object.fromEntries(rs.map(r=>[r.roster_id, r.owner_id]));
+
+  // last matchup mapping (fallback last week = 18)
+  let lastOppMap = {};
+  try{
+    const lastWeek = 18;
+    const mups = await fetch(`https://api.sleeper.app/v1/league/${lid}/matchups/${lastWeek}`).then(r=>r.json());
+    const games = {};
+    mups.forEach(m=>{ games[m.matchup_id] = games[m.matchup_id]||[]; games[m.matchup_id].push(m); });
+    Object.values(games).forEach(pair=>{ if(pair.length===2){
+      const [a,b] = pair;
+      const oa = rosterToOwner[a.roster_id]; const ob = rosterToOwner[b.roster_id];
+      lastOppMap[oa] = ob; lastOppMap[ob] = oa;
+    }});
+  }catch(e){ console.warn("[WARN] Last matchups failed",e); }
+
+  // compute metrics & attach waiver
   rs.forEach(r=>{
-    r.power  = (r.settings?.fpts||0) + (r.settings?.wins||0)*20;
-    r.maxPF  = r.settings?.fpts_max || 0;
-    r.waiver = waiverMap[r.owner_id] || (r.settings?.waiver_position||0);
+    r.power = (r.settings?.fpts||0)+(r.settings?.wins||0)*20;
+    r.maxPF = r.settings?.fpts_max||0;
+    r.waiver = waiverMap[r.owner_id]||0;
   });
 
-  const sortBy = document.getElementById('standings-sort')?.value || 'rank';
-  console.log("[DEBUG] Sorting by:", sortBy);
+  const sortBy = document.getElementById('standings-sort')?.value||'rank';
+  console.log("[DEBUG] Sorting by:",sortBy);
   rs.sort((a,b)=>{
-    switch(sortBy) {
-      case 'pf':    return (b.settings?.fpts||0) - (a.settings?.fpts||0);
-      case 'pa':    return (a.settings?.fpts_against||0) - (b.settings?.fpts_against||0);
+    switch(sortBy){
+      case 'pf': return (b.settings?.fpts||0)-(a.settings?.fpts||0);
+      case 'pa': return (a.settings?.fpts_against||0)-(b.settings?.fpts_against||0);
       case 'maxpf': return b.maxPF - a.maxPF;
       case 'power': return b.power - a.power;
-      case 'waiver':return a.waiver - b.waiver;
-      default:      return ((b.settings?.wins||0) - (a.settings?.wins||0)) || ((b.settings?.fpts||0) - (a.settings?.fpts||0));
+      case 'waiver': return a.waiver - b.waiver;
+      default: return ((b.settings?.wins||0)-(a.settings?.wins||0))||((b.settings?.fpts||0)-(a.settings?.fpts||0));
     }
   });
 
   let rows = '';
   rs.forEach((r,i)=>{
-    const owner = r.metadata?.team_name || userMap[r.owner_id] || 'Unknown';
+    const owner = teamMetaMap[r.roster_id]||userMap[r.owner_id]||'Unknown';
+    const opp = lastOppMap[r.owner_id];
+    let lastStr = '—';
+    if(opp && userMap[opp]){
+      const or = rs.find(x=>x.owner_id===opp);
+      lastStr = `${teamMetaMap[or.roster_id]||userMap[opp]} (${or.settings.wins}-${or.settings.losses})`;
+    }
     rows += `<tr>
       <td>${i+1}</td>
       <td><a href="teams.html#${r.owner_id}">${owner}</a></td>
-      <td>${r.settings?.wins||0}-${r.settings?.losses||0}</td>
-      <td>${(r.settings?.fpts||0).toFixed(1)}</td>
-      <td>${(r.settings?.fpts_against||0).toFixed(1)}</td>
+      <td>${r.settings.wins||0}-${r.settings.losses||0}</td>
+      <td>${(r.settings.fpts||0).toFixed(1)}</td>
+      <td>${(r.settings.fpts_against||0).toFixed(1)}</td>
       <td>${r.maxPF.toFixed(1)}</td>
       <td>${r.power.toFixed(1)}</td>
       <td>${r.waiver}</td>
-      <td>—</td>
+      <td>${lastStr}</td>
       <td>—</td>
     </tr>`;
   });
 
   el.innerHTML = `
     <table>
-      <thead>
-        <tr>
-          <th>Standings</th>
-          <th>Team</th>
-          <th>W-L</th>
-          <th>PF</th>
-          <th>PA</th>
-          <th>Max PF</th>
-          <th>Power Score</th>
-          <th>Waiver</th>
-          <th>Last</th>
-          <th>Next</th>
-        </tr>
-      </thead>
+      <thead><tr>
+        <th>Standings</th><th>Team</th><th>W-L</th>
+        <th>PF</th><th>PA</th><th>Max PF</th>
+        <th>Power Score</th><th>Waiver</th>
+        <th>Last</th><th>Next</th>
+      </tr></thead>
       <tbody>${rows}</tbody>
     </table>`;
 }
-// re-fetch on sort change
 const sortEl = document.getElementById('standings-sort');
 if (sortEl) sortEl.addEventListener('change', fetchStandings);
 
@@ -178,7 +193,6 @@ if (sortEl) sortEl.addEventListener('change', fetchStandings);
 // ——————————————————————————————————
 async function loadEvents() {
   const el = document.getElementById("event-log"); if(!el) return;
-  // Firestore events
   const fsSnap = await db.collection("events").orderBy("timestamp","desc").limit(20).get();
   const fsEvents = fsSnap.docs.map(d=>({
     ts: d.data().timestamp.toDate(),
@@ -186,7 +200,6 @@ async function loadEvents() {
     desc: d.data().desc,
     type: d.data().type
   }));
-  // waiver txns
   const tx    = await fetch(`https://api.sleeper.app/v1/league/${leagueId}/transactions/1`).then(r=>r.json());
   const [rosters, users, players] = await Promise.all([
     fetch(`https://api.sleeper.app/v1/league/${leagueId}/rosters`).then(r=>r.json()),
@@ -206,9 +219,7 @@ async function loadEvents() {
       waiverEvents.push({ ts, user: userMap[rosterMap[rid]]||'Unknown', desc: `❌ ${players[pid]?.full_name||pid}`, type: 'Waiver' });
     });
   });
-  // merge & sort
   const merged = [...fsEvents, ...waiverEvents].sort((a,b)=>b.ts - a.ts).slice(0,20);
-  // render
   let rows = merged.map(e=>`<tr>
     <td>${e.ts.toLocaleString()}</td>
     <td>${e.user}</td>
@@ -228,5 +239,4 @@ window.addEventListener('load', () => {
   fetchLeagueInfo();
   fetchStandings();
   if (typeof loadEvents === 'function') loadEvents();
-  // ... additional page-specific init calls ...
 });
