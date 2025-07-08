@@ -65,7 +65,7 @@ function toggleSection(id) {
 window.toggleSection = toggleSection;
 
 // ——————————————————————————————————
-// League IDs & Config
+// League IDs
 // ——————————————————————————————————
 const leagueId         = "1180208789911158784";
 const fallbackLeagueId = "1048313545995296768";
@@ -96,22 +96,21 @@ async function fetchStandings(){
     return;
   }
 
-  // Always get live waiver positions
-  let currentRosters = await fetch(`https://api.sleeper.app/v1/league/${leagueId}/rosters`)
-                                .then(r=>r.json());
+  // 1) Live waiver positions
+  const currentRs = await fetch(`https://api.sleeper.app/v1/league/${leagueId}/rosters`)
+                          .then(r=>r.json());
   const waiverMap = Object.fromEntries(
-    currentRosters.map(r=>[r.owner_id, r.settings?.waiver_position||0])
+    currentRs.map(r=>[r.owner_id, r.settings?.waiver_position||0])
   );
 
-  // Fetch rosters & users; fallback to last season if nobody has played
+  // 2) Fetch rosters & users, fallback if no games yet
   let lid = leagueId;
   let [rs, us] = await Promise.all([
     fetch(`https://api.sleeper.app/v1/league/${lid}/rosters`).then(r=>r.json()),
     fetch(`https://api.sleeper.app/v1/league/${lid}/users`).then(r=>r.json())
   ]);
-  // if all 0-0, switch
-  if(rs.every(r=> (r.settings?.wins||0)+(r.settings?.losses||0) === 0)){
-    console.log("[DEBUG] No games this season; switching to 2024 data");
+  if(rs.every(r=> (r.settings?.wins||0)+(r.settings?.losses||0) ===0)){
+    console.log("[DEBUG] No games this season; using 2024 data");
     lid = fallbackLeagueId;
     [rs, us] = await Promise.all([
       fetch(`https://api.sleeper.app/v1/league/${lid}/rosters`).then(r=>r.json()),
@@ -119,81 +118,76 @@ async function fetchStandings(){
     ]);
   }
 
-  const userMap       = Object.fromEntries(us.map(u=>[u.user_id, u.display_name]));
-  const rosterToOwner = Object.fromEntries(rs.map(r=>[r.roster_id, r.owner_id]));
+  const userMap       = Object.fromEntries(us.map(u=>[u.user_id,u.display_name]));
+  const rosterToOwner = Object.fromEntries(rs.map(r=>[r.roster_id,r.owner_id]));
 
-  // Find last non-empty matchup week on fallback
-  let lastOppMap   = {};
-  let lastScoreMap = {};
+  // 3) Find last played matchup from last season
+  let lastOppMap={}, lastScoreMap={};
   for(let wk=18; wk>=1; wk--){
     try{
       const mups = await fetch(`https://api.sleeper.app/v1/league/${fallbackLeagueId}/matchups/${wk}`)
-                           .then(r=>r.ok ? r.json() : []);
+                           .then(r=>r.ok?r.json():[]);
       if(Array.isArray(mups) && mups.length){
+        console.log(`[DEBUG] Using last matchup from week ${wk}`);
         const games = {};
-        mups.forEach(m => {
-          games[m.matchup_id] = games[m.matchup_id]||[];
-          games[m.matchup_id].push(m);
+        mups.forEach(m=>{
+          games[m.matchup_id]=(games[m.matchup_id]||[]).concat(m);
         });
-        Object.values(games).forEach(pair => {
+        Object.values(games).forEach(pair=>{
           if(pair.length===2){
-            const [a,b] = pair;
-            const oa = rosterToOwner[a.roster_id];
-            const ob = rosterToOwner[b.roster_id];
-            lastOppMap[oa] = ob;
-            lastOppMap[ob] = oa;
-            lastScoreMap[oa] = { pts: a.points, oppPts: b.points };
-            lastScoreMap[ob] = { pts: b.points, oppPts: a.points };
+            const [a,b]=pair;
+            const oa=rosterToOwner[a.roster_id], ob=rosterToOwner[b.roster_id];
+            lastOppMap[oa]=ob; lastOppMap[ob]=oa;
+            lastScoreMap[oa]={pts:a.points,oppPts:b.points};
+            lastScoreMap[ob]={pts:b.points,oppPts:a.points};
           }
         });
-        console.log(`[DEBUG] Using last matchup from week ${wk}`);
         break;
       }
-    } catch(e){
-      console.warn("[WARN] Error fetching matchups for week", wk, e);
+    }catch(e){
+      console.warn("Matchups fetch error wk",wk,e);
     }
   }
 
-  // Compute metrics
+  // 4) Compute metrics
   rs.forEach(r=>{
-    r.power  = (r.settings?.fpts||0) + (r.settings?.wins||0)*20;
-    r.maxPF  = r.settings?.fpts_max||0;
-    r.waiver = waiverMap[r.owner_id]||0;
+    r.power  =(r.settings?.fpts||0)+ (r.settings?.wins||0)*20;
+    r.maxPF  =r.settings?.fpts_max||0;
+    r.waiver =waiverMap[r.owner_id]||0;
   });
 
-  // Sort
+  // 5) Sort
   const sortBy = document.getElementById("standings-sort")?.value||"rank";
   console.log("[DEBUG] Sorting by:", sortBy);
   rs.sort((a,b)=>{
     switch(sortBy){
-      case 'pf':    return (b.settings?.fpts||0) - (a.settings?.fpts||0);
-      case 'pa':    return (a.settings?.fpts_against||0) - (b.settings?.fpts_against||0);
+      case 'pf':    return (b.settings?.fpts||0)-(a.settings?.fpts||0);
+      case 'pa':    return (a.settings?.fpts_against||0)-(b.settings?.fpts_against||0);
       case 'maxpf': return b.maxPF - a.maxPF;
       case 'power': return b.power - a.power;
       case 'waiver':return a.waiver - b.waiver;
-      default:      return ((b.settings?.wins||0)-(a.settings?.wins||0)) || ((b.settings?.fpts||0)-(a.settings?.fpts||0));
+      default:      return ((b.settings?.wins||0)-(a.settings?.wins||0))||((b.settings?.fpts||0)-(a.settings?.fpts||0));
     }
   });
 
-  // Build table
-  let rows = "";
+  // 6) Render table
+  let rows="";
   rs.forEach((r,i)=>{
-    const ownerName = userMap[r.owner_id] || "Unknown";
-    const w = r.settings?.wins||0, l = r.settings?.losses||0;
-    const pf = (r.settings?.fpts||0).toFixed(1);
-    const pa = (r.settings?.fpts_against||0).toFixed(1);
-    const mp = r.maxPF.toFixed(1), ps = r.power.toFixed(1);
-    const wv = r.waiver;
-    // Last game
-    let lastStr = "—";
-    const oppId = lastOppMap[r.owner_id];
-    if(oppId && lastScoreMap[r.owner_id]){
-      const sc = lastScoreMap[r.owner_id];
-      lastStr = `${userMap[oppId]||oppId} (${sc.pts}-${sc.oppPts})`;
+    const name = userMap[r.owner_id]||"Unknown";
+    const w=r.settings?.wins||0, l=r.settings?.losses||0;
+    const pf=(r.settings?.fpts||0).toFixed(1);
+    const pa=(r.settings?.fpts_against||0).toFixed(1);
+    const mp=r.maxPF.toFixed(1), ps=r.power.toFixed(1);
+    const wv=r.waiver;
+    let lastStr="—";
+    const opp=lastOppMap[r.owner_id];
+    if(opp && lastScoreMap[r.owner_id]){
+      const sc=lastScoreMap[r.owner_id];
+      lastStr=`${userMap[opp]||opp} (${sc.pts}-${sc.oppPts})`;
     }
-    rows += `<tr>
+    rows+=`<tr>
       <td>${i+1}</td>
-      <td><a href="teams.html#${r.owner_id}">${ownerName}</a></td>
+      <td><a href="teams.html#${r.owner_id}">${name}</a></td>
       <td>${w}-${l}</td>
       <td>${pf}</td>
       <td>${pa}</td>
@@ -205,111 +199,111 @@ async function fetchStandings(){
     </tr>`;
   });
 
-  el.innerHTML = `
-    <table>
-      <thead><tr>
-        <th>Standings</th><th>Team</th><th>W-L</th>
-        <th>PF</th><th>PA</th><th>Max PF</th>
-        <th>Power Score</th><th>Waiver</th>
-        <th>Last</th><th>Next</th>
-      </tr></thead>
-      <tbody>${rows}</tbody>
-    </table>`;
+  el.innerHTML=`<table>
+    <thead><tr>
+      <th>Standings</th><th>Team</th><th>W-L</th>
+      <th>PF</th><th>PA</th><th>Max PF</th>
+      <th>Power Score</th><th>Waiver</th>
+      <th>Last</th><th>Next</th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table>`;
   console.log("[DEBUG] fetchStandings() completed render");
 }
 
-// Re-run on sort change
+// re-run on sort change
 const sortEl = document.getElementById("standings-sort");
 if(sortEl) sortEl.addEventListener("change", fetchStandings);
 
 // ——————————————————————————————————
-// Unified Waiver & Events Feed
+// Unified League Events (Firestore + Waivers + Trades)
 // ——————————————————————————————————
 async function loadEvents(){
   const container = document.getElementById("event-log");
   if(!container) return;
 
-  // Pre-fetch player names & user names
+  // Preload player & user maps
   const [players, users] = await Promise.all([
     fetch("https://api.sleeper.app/v1/players/nfl").then(r=>r.json()),
     fetch(`https://api.sleeper.app/v1/league/${leagueId}/users`).then(r=>r.json())
   ]);
   const userMap = Object.fromEntries(users.map(u=>[u.user_id,u.display_name]));
 
-  // Listen for Firestore events (rules/polls)
+  // Listen Firestore events
   db.collection("events")
     .orderBy("timestamp","desc")
     .limit(20)
     .onSnapshot(async snap=>{
-      const docs = snap.docs.map(d => {
+      let docs = snap.docs.map(d=>{
         const e = d.data();
-        return {
-          ts:     e.timestamp.toDate(),
-          user:   e.user || "Commissioner",
-          action: e.desc,
-          type:   e.type
-        };
+        return { ts:e.timestamp.toDate(), user:e.user||"Commissioner", action:e.desc, type:e.type };
       });
 
-      // Fetch recent waiver txns
+      // Fetch recent transactions
       const txns = await fetch(`https://api.sleeper.app/v1/league/${leagueId}/transactions/1`)
-                          .then(r=>r.json());
-      txns.filter(t=>t.type==="waiver").slice(0,5).forEach(t=>{
-        // adds
-        for(const pid in t.adds){
-          const ownerId = String(t.adds[pid]);
+                        .then(r=>r.json());
+
+      // Waiver entries
+      txns.filter(t=>t.type==="waiver").forEach(t=>{
+        for(let pid in t.adds){
           docs.push({
-            ts:     new Date(t.created),
-            user:   userMap[t.creator] || t.creator,
-            action: `📥 ${players[pid]?.full_name||pid}`,
-            type:   "waiver"
+            ts: new Date(t.created),
+            user: userMap[t.creator]||t.creator,
+            action:`📥 ${players[pid]?.full_name||pid}`,
+            type:"waiver"
           });
         }
-        // drops
-        for(const pid in t.drops){
-          const ownerId = String(t.drops[pid]);
+        for(let pid in t.drops){
           docs.push({
-            ts:     new Date(t.created),
-            user:   userMap[t.creator] || t.creator,
-            action: `❌ ${players[pid]?.full_name||pid}`,
-            type:   "waiver"
+            ts: new Date(t.created),
+            user: userMap[t.creator]||t.creator,
+            action:`❌ ${players[pid]?.full_name||pid}`,
+            type:"waiver"
           });
         }
       });
 
-      // Sort and render
+      // Trade entries
+      txns.filter(t=>t.type==="trade").forEach(t=>{
+        docs.push({
+          ts: new Date(t.created),
+          user: userMap[t.creator]||t.creator,
+          action:"🛠️ Trade executed",
+          type:"trade"
+        });
+      });
+
+      // Sort by timestamp desc
       docs.sort((a,b)=>b.ts - a.ts);
-      container.innerHTML = `
-        <table>
-          <thead><tr>
-            <th>Date</th><th>User</th><th>Action</th><th>Type</th>
-          </tr></thead>
-          <tbody>
-            ${docs.map(e=>`
-              <tr>
-                <td>${e.ts.toLocaleString()}</td>
-                <td>${e.user}</td>
-                <td>${e.action}</td>
-                <td>${e.type}</td>
-              </tr>
-            `).join("")}
-          </tbody>
-        </table>`;
+
+      // Render table
+      container.innerHTML = `<table>
+        <thead><tr>
+          <th>Date</th><th>User</th><th>Action</th><th>Type</th>
+        </tr></thead>
+        <tbody>
+          ${docs.map(e=>`
+            <tr>
+              <td>${e.ts.toLocaleString()}</td>
+              <td>${e.user}</td>
+              <td>${e.action}</td>
+              <td>${e.type}</td>
+            </tr>`).join("")}
+        </tbody>
+      </table>`;
     });
 }
 
-// ——————————————————————————————————
-// Stubs for other pages to avoid errors
-// ——————————————————————————————————
-function loadPolls(){}  
-function loadRules(){}  
-function fetchTeams(){}  
-function analyzeTrade(){}  
-function drawTrendChart(){}  
+// Stubs to avoid console errors on other pages
+function loadPolls(){}
+function loadRules(){}
+function fetchTeams(){}
+function analyzeTrade(){}
+function drawTrendChart(){}
 function drawAgeCurve(){}
 
 // ——————————————————————————————————
-// INIT on Load
+// Initialization
 // ——————————————————————————————————
 window.addEventListener("load",()=>{
   fetchLeagueInfo();
