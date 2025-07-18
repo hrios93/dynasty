@@ -175,3 +175,12 @@ body.dark #top-nav {
 .position-group li {
   margin-bottom: 0.2em;
 }
+/* Standings table header contrast */
+#standings-data table thead th {
+  background-color: #e0e0e0;
+  color: #222;
+}
+body.dark #standings-data table thead th {
+  background-color: #333;
+  color: #eee;
+}
