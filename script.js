@@ -242,6 +242,45 @@ function analyzeTrade(){}
 function drawTrendChart(){}
 function drawAgeCurve(){}
 
+// ====== Dynamic Past Champions ======
+const pastLeagues = [
+  { year: 2024, id: "1048313545995296768" },
+  { year: 2023, id: "918655311878270976" }
+];
+
+async function fetchChampions() {
+  const gallery = document.getElementById("champion-gallery");
+  if (!gallery) return;
+
+  const items = await Promise.all(pastLeagues.map(async lg => {
+    // 1) get metadata → champion_roster_id  
+    const meta = await fetch(`https://api.sleeper.app/v1/league/${lg.id}/metadata`)
+                         .then(r => r.json());
+    const champRid = meta.champion_roster_id;
+
+    // 2) get that season’s rosters & users
+    const [rosters, users] = await Promise.all([
+      fetch(`https://api.sleeper.app/v1/league/${lg.id}/rosters`).then(r=>r.json()),
+      fetch(`https://api.sleeper.app/v1/league/${lg.id}/users`).then(r=>r.json())
+    ]);
+
+    // 3) find the champion roster & owner
+    const champRoster = rosters.find(r=>r.roster_id===champRid);
+    const champUser   = users.find(u=>u.user_id===champRoster.owner_id);
+
+    // 4) pick display name or team nickname if set
+    const teamName = champRoster.metadata?.team_name || champUser.display_name;
+
+    return `<li><strong>${lg.year}:</strong> ${teamName}</li>`;
+  }));
+
+  gallery.innerHTML = `<ul>${items.join("")}</ul>`;
+}
+
+// call it on load
+window.addEventListener("load", () => {
+  fetchChampions();
+});
 
 // =======================================
  // INITIALIZATION ON PAGE LOAD
