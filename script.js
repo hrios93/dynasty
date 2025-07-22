@@ -242,7 +242,9 @@ function analyzeTrade(){}
 function drawTrendChart(){}
 function drawAgeCurve(){}
 
-// ====== Dynamic Past Champions ======
+// ————————————————————————
+// Dynamic Past Champions
+// ————————————————————————
 const pastLeagues = [
   { year: 2024, id: "1048313545995296768" },
   { year: 2023, id: "918655311878270976" }
@@ -253,34 +255,35 @@ async function fetchChampions() {
   if (!gallery) return;
 
   const items = await Promise.all(pastLeagues.map(async lg => {
-    // 1) get metadata → champion_roster_id  
-    const meta = await fetch(`https://api.sleeper.app/v1/league/${lg.id}/metadata`)
-                         .then(r => r.json());
-    const champRid = meta.champion_roster_id;
+    try {
+      // 1) Fetch league object (has champion_roster_id)
+      const league = await fetch(`https://api.sleeper.app/v1/league/${lg.id}`)
+        .then(r => {
+          if (!r.ok) throw new Error(`League ${lg.id} not found`);
+          return r.json();
+        });
+      const champRid = league.champion_roster_id;
 
-    // 2) get that season’s rosters & users
-    const [rosters, users] = await Promise.all([
-      fetch(`https://api.sleeper.app/v1/league/${lg.id}/rosters`).then(r=>r.json()),
-      fetch(`https://api.sleeper.app/v1/league/${lg.id}/users`).then(r=>r.json())
-    ]);
+      // 2) Fetch that season’s rosters & users
+      const [rosters, users] = await Promise.all([
+        fetch(`https://api.sleeper.app/v1/league/${lg.id}/rosters`).then(r => r.json()),
+        fetch(`https://api.sleeper.app/v1/league/${lg.id}/users`).then(r => r.json())
+      ]);
 
-    // 3) find the champion roster & owner
-    const champRoster = rosters.find(r=>r.roster_id===champRid);
-    const champUser   = users.find(u=>u.user_id===champRoster.owner_id);
+      // 3) Find the champion’s owner and team name
+      const champRoster = rosters.find(r => r.roster_id === champRid);
+      const champUser   = users.find(u => u.user_id === champRoster.owner_id);
+      const teamName    = champRoster.metadata?.team_name || champUser.display_name;
 
-    // 4) pick display name or team nickname if set
-    const teamName = champRoster.metadata?.team_name || champUser.display_name;
-
-    return `<li><strong>${lg.year}:</strong> ${teamName}</li>`;
+      return `<li><strong>${lg.year}:</strong> ${teamName}</li>`;
+    } catch (err) {
+      console.error(`fetchChampions error (${lg.year}):`, err);
+      return `<li><strong>${lg.year}:</strong> —</li>`;
+    }
   }));
 
   gallery.innerHTML = `<ul>${items.join("")}</ul>`;
 }
-
-// call it on load
-window.addEventListener("load", () => {
-  fetchChampions();
-});
 
 // =======================================
  // INITIALIZATION ON PAGE LOAD
@@ -289,4 +292,11 @@ window.addEventListener("load", () => {
   fetchLeagueInfo();
   fetchStandings();
   loadEvents();
+   window.addEventListener("load", () => {
+  fetchLeagueInfo();
+  fetchStandings();
+  loadEvents();
+  fetchChampions(); 
+});
+
 });
