@@ -13,3 +13,7 @@ Welcome to your custom-built Dynasty Fantasy Football League Website, powered by
 - Commissioner-editable rules + persistent polls (Firebase)
 - Dark Mode (system & toggle)
 - CSV export tools
+
+## License
+
+This project is licensed under the [MIT License](LICENSE).
