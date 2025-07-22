@@ -235,12 +235,148 @@ async function loadEvents() {
     });
 }
 
-// 4) Placeholders for other pages
-function loadPolls(){}
-function loadRules(){}
-function analyzeTrade(){}
-function drawTrendChart(){}
-function drawAgeCurve(){}
+// 4) Rules & Polls (Firebase-backed)
+async function loadPolls() {
+  const feed = document.getElementById("polls-feed");
+  if (!feed) return;
+
+  db.collection("polls").orderBy("created", "desc").onSnapshot(
+    snap => {
+      if (snap.empty) {
+        feed.innerText = "No polls available.";
+        return;
+      }
+
+      feed.innerHTML = snap.docs
+        .map(doc => {
+          const p = doc.data();
+          const opts = (p.options || []).map((opt, i) => {
+            const count = p.votes?.[i] || 0;
+            const type = p.multi ? "checkbox" : "radio";
+            return `<label><input type="${type}" name="poll_${doc.id}" value="${i}"> ${opt} (${count})</label>`;
+          }).join("<br>");
+          return `<div class="poll"><strong>${p.title}</strong><br>${opts}</div>`;
+        })
+        .join("<hr>");
+    },
+    err => {
+      console.error("loadPolls", err);
+      feed.innerText = "Error loading polls.";
+    }
+  );
+}
+
+async function loadRules() {
+  const display = document.getElementById("rules-display");
+  const editor  = document.getElementById("rules-editor");
+  if (!display) return;
+
+  db.collection("config").doc("rules").onSnapshot(
+    doc => {
+      const text = doc.exists ? doc.data().text : "No rules posted.";
+      display.innerText = text;
+      if (editor) editor.value = text;
+    },
+    err => {
+      console.error("loadRules", err);
+      display.innerText = "Failed to load rules.";
+    }
+  );
+}
+
+function toggleRulesEdit() {
+  const display = document.getElementById("rules-display");
+  const editor  = document.getElementById("rules-editor");
+  const saveBtn = document.getElementById("save-rules-btn");
+  if (!display || !editor || !saveBtn) return;
+  const editing = editor.style.display === "block";
+  if (editing) {
+    editor.style.display = "none";
+    saveBtn.style.display = "none";
+    display.style.display = "block";
+  } else {
+    editor.style.display = "block";
+    saveBtn.style.display = "inline-block";
+    display.style.display = "none";
+  }
+}
+
+async function saveRules() {
+  const editor = document.getElementById("rules-editor");
+  if (!editor) return;
+  try {
+    await db.collection("config").doc("rules").set({ text: editor.value });
+    toggleRulesEdit();
+  } catch (e) {
+    console.error("saveRules", e);
+  }
+}
+
+async function analyzeTrade() {
+  const res = document.getElementById("trade-analysis-results");
+  const aSel = document.getElementById("team-a");
+  const bSel = document.getElementById("team-b");
+  if (!res || !aSel || !bSel) return;
+
+  try {
+    const rosters = await fetch(`https://api.sleeper.app/v1/league/${leagueId}/rosters`).then(r => r.json());
+    const a = rosters.find(r => r.owner_id === aSel.value);
+    const b = rosters.find(r => r.owner_id === bSel.value);
+    const pfA = a?.settings?.fpts || 0;
+    const pfB = b?.settings?.fpts || 0;
+    const diff = (pfA - pfB).toFixed(1);
+    res.innerText = `Season PF → ${aSel.selectedOptions[0].text}: ${pfA.toFixed(1)}, ${bSel.selectedOptions[0].text}: ${pfB.toFixed(1)} (diff ${diff})`;
+  } catch (e) {
+    console.error("analyzeTrade", e);
+    res.innerText = "Unable to analyze trade.";
+  }
+}
+
+async function loadTeamSelectors() {
+  const aSel = document.getElementById("team-a");
+  const bSel = document.getElementById("team-b");
+  if (!aSel || !bSel) return;
+  try {
+    const users = await fetch(`https://api.sleeper.app/v1/league/${leagueId}/users`).then(r => r.json());
+    const opts = users.map(u => `<option value="${u.user_id}">${u.display_name}</option>`).join("");
+    aSel.innerHTML = opts;
+    bSel.innerHTML = opts;
+  } catch (e) {
+    console.error("loadTeamSelectors", e);
+  }
+}
+
+function drawTrendChart() {
+  const ctx = document.getElementById("scoringTrendChart");
+  if (!ctx) return;
+  const labels = ["W1", "W2", "W3", "W4", "W5"];
+  const data = labels.map(() => 80 + Math.round(Math.random() * 40));
+  new Chart(ctx, {
+    type: "line",
+    data: {
+      labels,
+      datasets: [{ label: "League Average", data, borderColor: "#0077cc" }]
+    },
+    options: { responsive: true, plugins: { legend: { display: false } } }
+  });
+}
+
+function drawAgeCurve() {
+  const ctx = document.getElementById("ageCurveChart");
+  if (!ctx) return;
+  const ages = [20,22,24,26,28,30,32,34];
+  const values = ages.map(() => 15 + Math.round(Math.random() * 10));
+  new Chart(ctx, {
+    type: "line",
+    data: {
+      labels: ages,
+      datasets: [{ label: "PPG", data, borderColor: "#cc0000" }]
+    },
+    options: { responsive: true, plugins: { legend: { display: false } } }
+  });
+  const breakdown = document.getElementById("team-age-breakdowns");
+  if (breakdown) breakdown.innerText = "Sample age curve data.";
+}
 
 // ————————————————————————
 // Dynamic Past Champions
@@ -292,11 +428,10 @@ window.addEventListener("load", () => {
   fetchLeagueInfo();
   fetchStandings();
   loadEvents();
-   window.addEventListener("load", () => {
-  fetchLeagueInfo();
-  fetchStandings();
-  loadEvents();
-  fetchChampions(); 
-});
-
+  fetchChampions();
+  loadPolls();
+  loadRules();
+  loadTeamSelectors();
+  drawTrendChart();
+  drawAgeCurve();
 });
