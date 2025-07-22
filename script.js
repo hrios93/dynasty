@@ -292,11 +292,5 @@ window.addEventListener("load", () => {
   fetchLeagueInfo();
   fetchStandings();
   loadEvents();
-   window.addEventListener("load", () => {
-  fetchLeagueInfo();
-  fetchStandings();
-  loadEvents();
-  fetchChampions(); 
-});
-
+  fetchChampions();
 });
