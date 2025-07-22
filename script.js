@@ -5,14 +5,18 @@
    – Firebase, Dark Mode, Auth, Utility
    ======================================= */
 
-// Initialize Firebase
-firebase.initializeApp({
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js";
+import { getAuth, onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-auth.js";
+import { getFirestore, collection, doc, getDoc, setDoc, onSnapshot, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-firestore.js";
+
+const firebaseConfig = {
   apiKey:    "AIzaSyBTY-rF1jHLFyPjtQ5NVNTKAO7_9ts8MjI",
   authDomain:"dynastyboard.firebaseapp.com",
   projectId: "dynastyboard"
-});
-const db   = firebase.firestore();
-const auth = firebase.auth();
+};
+const app  = initializeApp(firebaseConfig);
+const db   = getFirestore(app);
+const auth = getAuth(app);
 
 // Dark Mode: respect OS setting & toggle
 (function(){
@@ -35,14 +39,31 @@ function toggleSection(id) {
 }
 window.toggleSection = toggleSection;
 
-// Authentication (stubs for future)
+// Authentication helpers
 let currentUser = null;
-auth.onAuthStateChanged(u => {
+const adminUid = "ADMIN_UID"; // replace with your Firebase UID
+
+function startLogin() {
+  const provider = new GoogleAuthProvider();
+  signInWithPopup(auth, provider).catch(console.error);
+}
+window.startLogin = startLogin;
+
+function logout() {
+  signOut(auth).catch(console.error);
+}
+window.logout = logout;
+
+onAuthStateChanged(auth, u => {
   currentUser = u;
-  // here you could show/hide login buttons if implemented
+  document.getElementById("login-btn")?.style.display = u ? "none" : "inline";
+  document.getElementById("logout-btn")?.style.display = u ? "inline" : "none";
+  const canEdit = u && u.uid === adminUid;
+  document.getElementById("edit-notes-btn")?.style.setProperty("display", canEdit ? "inline" : "none");
   loadPolls();
   loadRules();
   loadEvents();
+  loadNotes();
 });
 
 
@@ -54,6 +75,7 @@ auth.onAuthStateChanged(u => {
 // Your Sleeper league IDs
 const leagueId         = "1180208789911158784";
 const fallbackLeagueId = "1048313545995296768";
+const draftId          = "1234567890"; // Update with current draft ID
 
 // 1) League Info (header)
 async function fetchLeagueInfo() {
@@ -169,10 +191,8 @@ async function loadEvents() {
   ]);
   const userMap = Object.fromEntries(users.map(u => [u.user_id, u.display_name]));
 
-  db.collection("events")
-    .orderBy("timestamp","desc")
-    .limit(20)
-    .onSnapshot(async snap => {
+  const q = query(collection(db,"events"), orderBy("timestamp","desc"), limit(20));
+  onSnapshot(q, async snap => {
       let docs = snap.docs.map(d => {
         const e = d.data();
         return {
@@ -242,6 +262,49 @@ function analyzeTrade(){}
 function drawTrendChart(){}
 function drawAgeCurve(){}
 
+// Commissioner Notes
+const notesRef = doc(db, "config", "notes");
+
+async function loadNotes() {
+  const disp = document.getElementById("notes-display");
+  const edit = document.getElementById("notes-editor");
+  if (!disp) return;
+  const snap = await getDoc(notesRef);
+  const text = snap.exists() ? snap.data().text : "";
+  disp.innerText = text;
+  if (edit) edit.value = text;
+}
+window.loadNotes = loadNotes;
+
+document.getElementById("edit-notes-btn")?.addEventListener("click", () => {
+  document.getElementById("notes-editor").style.display = "block";
+  document.getElementById("save-notes-btn").style.display = "inline";
+  document.getElementById("edit-notes-btn").style.display = "none";
+});
+
+document.getElementById("save-notes-btn")?.addEventListener("click", async () => {
+  const text = document.getElementById("notes-editor").value;
+  await setDoc(notesRef, { text });
+  document.getElementById("notes-editor").style.display = "none";
+  document.getElementById("save-notes-btn").style.display = "none";
+  document.getElementById("edit-notes-btn").style.display = "inline";
+  loadNotes();
+});
+
+// Draft Dashboard (basic starter)
+async function loadDraft() {
+  const body = document.querySelector("#draft-table tbody");
+  if (!body) return;
+  try {
+    const picks = await fetch(`https://api.sleeper.app/v1/draft/${draftId}/picks`).then(r=>r.json());
+    const rows = picks.map(p => `<tr><td>${p.pick_no}</td><td>${p.roster_id}</td><td>${p.player_id}</td><td>—</td></tr>`).join("");
+    body.innerHTML = rows;
+  } catch(e) {
+    console.error("loadDraft error", e);
+  }
+}
+window.loadDraft = loadDraft;
+
 // ————————————————————————
 // Dynamic Past Champions
 // ————————————————————————
@@ -292,11 +355,7 @@ window.addEventListener("load", () => {
   fetchLeagueInfo();
   fetchStandings();
   loadEvents();
-   window.addEventListener("load", () => {
-  fetchLeagueInfo();
-  fetchStandings();
-  loadEvents();
-  fetchChampions(); 
-});
-
+  fetchChampions();
+  loadDraft();
+  loadNotes();
 });

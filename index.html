@@ -6,9 +6,6 @@
   <title>🏈 Dynasty Fantasy Football League</title>
   <link rel="stylesheet" href="style.css"/>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 </head>
 <body>
   <header>
@@ -45,6 +42,18 @@
       <div id="event-log" style="display:none;">Loading...</div>
     </section>
 
+    <section id="draft-dashboard">
+      <h2>📝 Draft Dashboard</h2>
+      <table id="draft-table">
+        <thead>
+          <tr>
+            <th>Pick</th><th>Team</th><th>Player</th><th>Grade</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </section>
+
     <section id="champions-section">
       <h2>🏆 Past Champions</h2>
       <div id="champion-gallery">
@@ -55,12 +64,20 @@
         </ul>
       </div>
     </section>
+
+    <section id="commish-notes">
+      <h2>🗒️ Commissioner Notes</h2>
+      <div id="notes-display">Loading...</div>
+      <textarea id="notes-editor" style="display:none;" rows="5"></textarea>
+      <button id="edit-notes-btn" style="display:none;">Edit</button>
+      <button id="save-notes-btn" style="display:none;">Save</button>
+    </section>
   </main>
 
   <footer>
     <p>&copy; 2025 Dynasty League Manager</p>
   </footer>
 
-  <script src="script.js"></script>
+  <script type="module" src="script.js"></script>
 </body>
 </html>
